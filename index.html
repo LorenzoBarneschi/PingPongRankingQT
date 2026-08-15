@@ -13,18 +13,14 @@
     </header>
 
     <main>
-        <!-- VISTA 1: ARENA (Classifica e Partite) -->
+        <!-- VISTA 1: ARENA -->
         <div id="view-arena" class="view active-view">
             <section class="card">
                 <h2>🏆 Classifica Live</h2>
                 <div class="table-container">
                     <table id="ranking-table">
-                        <thead>
-                            <tr><th>Pos</th><th>Giocatore</th><th>Punti</th><th>V-S</th></tr>
-                        </thead>
-                        <tbody id="ranking-list">
-                            <tr><td colspan="4">Caricamento...</td></tr>
-                        </tbody>
+                        <thead><tr><th>Pos</th><th>Giocatore</th><th>Punti</th><th>V-S</th></tr></thead>
+                        <tbody id="ranking-list"><tr><td colspan="4">Caricamento...</td></tr></tbody>
                     </table>
                 </div>
             </section>
@@ -43,9 +39,11 @@
                     <div>
                         <label>Formato</label>
                         <select id="format" required>
-                            <option value="11">A 11 punti</option>
-                            <option value="21">A 21 punti</option>
-                            <option value="bo3">Al meglio delle 3 (Bo3)</option>
+                            <option value="11">Singola a 11 punti</option>
+                            <option value="21">Singola a 21 punti</option>
+                            <option value="bo3_11">Al meglio delle 3 (a 11 pt)</option>
+                            <option value="bo3_21">Al meglio delle 3 (a 21 pt)</option>
+                            <option value="bo5">Al meglio delle 5 (Maratona)</option>
                         </select>
                     </div>
                     <div><label>Note</label><input type="text" id="match-notes" placeholder="Es. Partita sudatissima..."></div>
@@ -54,31 +52,54 @@
             </section>
 
             <section class="card">
-                <h2>👤 Aggiungi Giocatore</h2>
-                <form id="player-form">
-                    <input type="text" id="new-player-name" placeholder="Nome giocatore..." required>
+                <h2>⚙️ Gestione Giocatori</h2>
+                <form id="player-form" style="margin-bottom: 15px;">
+                    <input type="text" id="new-player-name" placeholder="Nuovo giocatore..." required>
                     <button type="submit" class="btn-secondary">Aggiungi</button>
                 </form>
+                <div class="delete-section">
+                    <select id="delete-player-select"><option value="">Seleziona per eliminare...</option></select>
+                    <button id="delete-player-btn" class="btn-danger">Elimina</button>
+                </div>
             </section>
         </div>
 
-        <!-- VISTA 2: STATISTICHE (Grafici e AI) -->
+        <!-- VISTA 2: STORICO -->
+        <div id="view-history" class="view">
+            <section class="card">
+                <h2>📜 Storico Partite</h2>
+                <div id="history-list">
+                    <!-- Le partite appariranno qui -->
+                    <p>Caricamento storico...</p>
+                </div>
+            </section>
+        </div>
+
+        <!-- VISTA 3: STATISTICHE (Grafici e Oracolo) -->
         <div id="view-stats" class="view">
             <section class="card">
-                <h2>🤖 Il Commento del Mister</h2>
-                <p id="ai-comment">Sto analizzando le partite...</p>
+                <h2>Seleziona Giocatore</h2>
+                <select id="stats-player-select">
+                    <option value="general">📊 Statistiche Generali (Gruppo)</option>
+                    <!-- Opzioni giocatori generate da JS -->
+                </select>
             </section>
 
             <section class="card">
-                <h2>📈 Andamento Ranking</h2>
+                <h2>🎙️ La Voce del Tavolo</h2>
+                <p id="ai-comment">Sto analizzando i dati...</p>
+            </section>
+
+            <section class="card">
+                <h2>📈 Grafico Ranking</h2>
                 <canvas id="rankingChart"></canvas>
             </section>
         </div>
     </main>
 
-    <!-- BARRA DI NAVIGAZIONE IN BASSO -->
     <nav class="bottom-nav">
         <button id="nav-arena" class="nav-btn active">🏓 Arena</button>
+        <button id="nav-history" class="nav-btn">📜 Storico</button>
         <button id="nav-stats" class="nav-btn">📊 Statistiche</button>
     </nav>
 
