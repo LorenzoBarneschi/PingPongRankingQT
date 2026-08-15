@@ -69,30 +69,36 @@
             <section class="card">
                 <h2>📜 Storico Partite</h2>
                 <div id="history-list">
-                    <!-- Le partite appariranno qui -->
                     <p>Caricamento storico...</p>
                 </div>
             </section>
         </div>
 
-        <!-- VISTA 3: STATISTICHE (Grafici e Oracolo) -->
+        <!-- VISTA 3: STATISTICHE -->
         <div id="view-stats" class="view">
             <section class="card">
-                <h2>Seleziona Giocatore</h2>
+                <h2>Analisi Giocatore</h2>
                 <select id="stats-player-select">
                     <option value="general">📊 Statistiche Generali (Gruppo)</option>
-                    <!-- Opzioni giocatori generate da JS -->
                 </select>
             </section>
 
             <section class="card">
                 <h2>🎙️ La Voce del Tavolo</h2>
                 <p id="ai-comment">Sto analizzando i dati...</p>
+                <div id="extra-stats" class="extra-stats-container">
+                    <!-- Nemesi e Vittima appariranno qui -->
+                </div>
             </section>
 
-            <section class="card">
-                <h2>📈 Grafico Ranking</h2>
+            <section class="card" id="chart-container-line">
+                <h2>📈 Andamento Punti</h2>
                 <canvas id="rankingChart"></canvas>
+            </section>
+
+            <section class="card" id="chart-container-pie" style="display:none;">
+                <h2>🎯 Win Rate</h2>
+                <canvas id="winRateChart"></canvas>
             </section>
         </div>
     </main>

@@ -1,4 +1,4 @@
-:root { --primary-color: #e63946; --secondary-color: #457b9d; --danger-color: #d62828; --bg-color: #f1faee; --card-bg: #ffffff; --text-color: #1d3557; --border-radius: 12px; }
+:root { --primary-color: #e63946; --secondary-color: #457b9d; --danger-color: #d62828; --success-color: #2a9d8f; --bg-color: #f1faee; --card-bg: #ffffff; --text-color: #1d3557; --border-radius: 12px; }
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 body { background-color: var(--bg-color); color: var(--text-color); padding-bottom: 80px; }
 header { background-color: var(--primary-color); color: white; padding: 20px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
@@ -25,17 +25,25 @@ tr:nth-child(1) td { font-weight: bold; color: #d4af37; }
 tr:nth-child(2) td { font-weight: bold; color: #c0c0c0; } 
 tr:nth-child(3) td { font-weight: bold; color: #cd7f32; }
 
-/* Storico */
-.history-item { padding: 15px; border-bottom: 1px solid #eee; font-size: 0.95rem; }
+/* Storico Partite con tasto Elimina */
+.history-item { padding: 15px; border-bottom: 1px solid #eee; font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center;}
 .history-item:last-child { border-bottom: none; }
+.history-info { flex: 1; }
 .history-item .match-title { font-weight: bold; color: var(--primary-color); margin-bottom: 5px;}
 .history-item .match-meta { font-size: 0.8rem; color: #666; }
+.btn-delete-match { background-color: #ffb3b3; color: #d62828; padding: 8px 12px; font-size: 0.8rem; border-radius: 6px; margin-left: 10px; }
 
-/* Gestione delle viste (Tabs) */
+/* Statistiche Extra */
+.extra-stats-container { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
+.stat-box { flex: 1; min-width: 120px; background: #f8f9fa; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #eee; }
+.stat-box span { display: block; font-size: 0.8rem; color: #666; text-transform: uppercase; }
+.stat-box strong { font-size: 1.1rem; color: var(--secondary-color); }
+
+/* Viste e Nav */
 .view { display: none; }
 .view.active-view { display: block; animation: fadeIn 0.3s; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: white; display: flex; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 100;}
 .nav-btn { flex: 1; border-radius: 0; background: transparent; color: #888; border-top: 3px solid transparent; padding: 15px; font-size: 0.9rem; }
-.nav-btn.active { color: var(--primary-color); border-top: 3px solid var(--primary-color); color: var(--primary-color); font-weight: bold;}
+.nav-btn.active { color: var(--primary-color); border-top: 3px solid var(--primary-color); font-weight: bold;}
 #ai-comment { font-style: italic; color: #333; line-height: 1.5; padding: 15px; border-left: 4px solid var(--secondary-color); background: #f8f9fa; border-radius: 0 8px 8px 0; }
