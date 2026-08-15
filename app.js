@@ -1,36 +1,26 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, setDoc, getDoc, updateDoc, deleteDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-const firebaseConfig = {
-    apiKey: "AIzaSyBv0C_tgvchxbG6xrvtj9ypeN_ARmvIhdA",
-    authDomain: "pingpongrankingqt.firebaseapp.com",
-    projectId: "pingpongrankingqt"
-};
+const firebaseConfig = { apiKey: "AIzaSyBv0C_tgvchxbG6xrvtj9ypeN_ARmvIhdA", authDomain: "pingpongrankingqt.firebaseapp.com", projectId: "pingpongrankingqt" };
+const app = initializeApp(firebaseConfig); const db = getFirestore(app);
+const playersRef = collection(db, "players"); const matchesRef = collection(db, "matches");
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const playersRef = collection(db, "players");
-const matchesRef = collection(db, "matches");
+let playersData = []; let matchesData = []; let lineChart = null; let pieChart = null;
 
-let playersData = []; 
-let matchesData = [];
-let lineChart = null; 
-let pieChart = null;
-
-// Imposta Data e Ora attuali nel form
-window.addEventListener('DOMContentLoaded', () => {
-    const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+// Gestione Data e Ora
+function setNow() {
+    const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     document.getElementById('match-date').value = now.toISOString().slice(0,16);
-});
+}
+window.addEventListener('DOMContentLoaded', setNow);
+document.getElementById('btn-now').addEventListener('click', setNow);
 
-// Mostra/Nascondi form custom
+// Formato Personalizzato
 document.getElementById('format').addEventListener('change', (e) => {
-    const customDiv = document.getElementById('custom-format-details');
-    customDiv.style.display = e.target.value === 'custom' ? 'block' : 'none';
+    document.getElementById('custom-format-details').style.display = e.target.value === 'custom' ? 'block' : 'none';
 });
 
-// --- NAVIGAZIONE TABS ---
+// --- TABS ---
 function switchTab(tabId) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active-view'));
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -42,157 +32,236 @@ document.getElementById("nav-history").addEventListener("click", () => switchTab
 document.getElementById("nav-stats").addEventListener("click", () => {
     switchTab('stats');
     generateSmartComment(document.getElementById("stats-player-select").value);
+    populateMonths();
 });
 
 // --- CLASSIFICA ---
 onSnapshot(query(playersRef, orderBy("rating", "desc")), (snapshot) => {
     const rankingList = document.getElementById("ranking-list");
-    const selects = [document.getElementById("winner"), document.getElementById("loser"), document.getElementById("delete-player-select"), document.getElementById("stats-player-select")];
+    const selects = [document.getElementById("winner"), document.getElementById("loser"), document.getElementById("delete-player-select"), document.getElementById("stats-player-select"), document.getElementById("h2h-p1"), document.getElementById("h2h-p2")];
     
     rankingList.innerHTML = "";
-    selects[0].innerHTML = '<option value="">Seleziona...</option>';
-    selects[1].innerHTML = '<option value="">Seleziona...</option>';
+    selects[0].innerHTML = '<option value="">Seleziona...</option>'; selects[1].innerHTML = '<option value="">Seleziona...</option>';
     selects[2].innerHTML = '<option value="">Seleziona per eliminare...</option>';
     selects[3].innerHTML = '<option value="general">📊 Statistiche Generali (Gruppo)</option>';
+    selects[4].innerHTML = '<option value="">Giocatore 1</option>'; selects[5].innerHTML = '<option value="">Giocatore 2</option>';
     
-    playersData = [];
-    let pos = 1;
+    playersData = []; let pos = 1;
 
     snapshot.forEach((doc) => {
-        const player = doc.data(); player.id = doc.id; playersData.push(player);
-        rankingList.innerHTML += `<tr><td>${pos}°</td><td>${player.name}</td><td><strong>${Math.round(player.rating)}</strong></td><td>${player.wins} - ${player.losses}</td></tr>`;
-        const opt = `<option value="${player.id}">${player.name}</option>`;
+        const p = doc.data(); p.id = doc.id; playersData.push(p);
+        
+        // CSS Classi per Posizione (Podio, Stacco, Ultimo)
+        let rowClass = ""; let rankClass = "";
+        if(pos === 1) rankClass = "rank-1"; else if(pos === 2) rankClass = "rank-2"; else if(pos === 3) rankClass = "rank-3";
+        if(pos === 3 && snapshot.size > 3) rowClass = "podium-divider"; // Linea stacco sotto il 3°
+        if(pos === snapshot.size && snapshot.size >= 4) rankClass = "rank-last"; // Rosso per l'ultimo
+
+        rankingList.innerHTML += `<tr class="${rowClass}">
+            <td class="${rankClass}">${pos}°</td>
+            <td class="${rankClass}">${p.name}</td>
+            <td class="${rankClass}">${Math.round(p.rating)}</td>
+            <td>${p.wins} - ${p.losses}</td>
+        </tr>`;
+        
+        const opt = `<option value="${p.id}">${p.name}</option>`;
         selects.forEach(s => s.innerHTML += opt);
         pos++;
     });
 });
 
-// --- STORICO ---
+// --- STORICO E AGGIORNAMENTO DATI ---
 onSnapshot(query(matchesRef, orderBy("timestamp", "desc")), (snapshot) => {
     const historyList = document.getElementById("history-list");
     historyList.innerHTML = ""; matchesData = [];
-    if(snapshot.empty) return historyList.innerHTML = "<p>Nessuna partita giocata ancora.</p>";
+    if(snapshot.empty) return historyList.innerHTML = "<p>Nessuna partita giocata.</p>";
 
     snapshot.forEach((docSnap) => {
         const match = docSnap.data(); match.id = docSnap.id; matchesData.push(match);
         const wName = playersData.find(p => p.id === match.winner)?.name || "Ignoto";
         const lName = playersData.find(p => p.id === match.loser)?.name || "Ignoto";
         const date = match.timestamp ? match.timestamp.toDate().toLocaleDateString("it-IT", {day:'numeric', month:'short', year:'2-digit'}) : "Ora";
-        
-        let formatDisplay = match.format;
-        if(match.format === 'custom') formatDisplay = `Custom (Bo${match.customSets} a ${match.customPoints})`;
+        let fmt = match.format; if(match.format === 'custom') fmt = `Custom(Bo${match.customSets})`;
 
         historyList.innerHTML += `
             <div class="history-item">
                 <div class="history-info">
                     <div class="match-title">🥇 ${wName} (${match.winnerScore}) vs 🥈 ${lName} (${match.loserScore})</div>
-                    <div class="match-meta">📅 ${date} | Fmt: ${formatDisplay} | 📈 Punti: ${match.pointsExchanged} ${match.notes ? `<br><em>Note: ${match.notes}</em>` : ''}</div>
+                    <div class="match-meta">📅 ${date} | Fmt: ${fmt} | 📈 Punti: ${match.pointsExchanged} ${match.notes ? `<br><em>Note: ${match.notes}</em>` : ''}</div>
                 </div>
                 <button class="btn-delete-match" onclick="deleteMatch('${match.id}', '${match.winner}', '${match.loser}', ${match.pointsExchanged})">Annulla</button>
             </div>
         `;
     });
+    populateMonths(); // Aggiorna i mesi disponibili se arrivano nuove partite
 });
 
-window.deleteMatch = async (matchId, winnerId, loserId, pointsExchanged) => {
-    if(!confirm("Vuoi annullare questa partita? I punti verranno restituiti.")) return;
+window.deleteMatch = async (matchId, wId, lId, pts) => {
+    if(!confirm("Annullare? I punti torneranno come prima.")) return;
     try {
-        const wSnap = await getDoc(doc(db, "players", winnerId));
-        const lSnap = await getDoc(doc(db, "players", loserId));
-        if (wSnap.exists()) await updateDoc(doc(db, "players", winnerId), { rating: wSnap.data().rating - pointsExchanged, wins: Math.max(0, wSnap.data().wins - 1) });
-        if (lSnap.exists()) await updateDoc(doc(db, "players", loserId), { rating: lSnap.data().rating + pointsExchanged, losses: Math.max(0, lSnap.data().losses - 1) });
+        const w = await getDoc(doc(db, "players", wId)); const l = await getDoc(doc(db, "players", lId));
+        if (w.exists()) await updateDoc(doc(db, "players", wId), { rating: w.data().rating - pts, wins: Math.max(0, w.data().wins - 1) });
+        if (l.exists()) await updateDoc(doc(db, "players", lId), { rating: l.data().rating + pts, losses: Math.max(0, l.data().losses - 1) });
         await deleteDoc(doc(db, "matches", matchId));
-    } catch(e) { console.error(e); }
+    } catch(e) {}
 };
 
-// Aggiungi / Elimina
+// Giocatori
 document.getElementById("player-form").addEventListener("submit", async (e) => { e.preventDefault(); const n = document.getElementById("new-player-name").value.trim(); if (n) { await setDoc(doc(playersRef, n.toLowerCase()), { name: n, rating: 1000, wins: 0, losses: 0 }); document.getElementById("new-player-name").value = ""; }});
-document.getElementById("delete-player-btn").addEventListener("click", async () => { const id = document.getElementById("delete-player-select").value; if(id && confirm("Sei sicuro?")) await deleteDoc(doc(playersRef, id)); });
+document.getElementById("delete-player-btn").addEventListener("click", async () => { const id = document.getElementById("delete-player-select").value; if(id && confirm("Sicuro?")) await deleteDoc(doc(playersRef, id)); });
 
-// --- SALVATAGGIO PARTITA (Con Data Retroattiva, Penalità Spam e Formato Custom) ---
+// --- SALVA PARTITA (Cap aggiornato) ---
 document.getElementById("match-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const winnerId = document.getElementById("winner").value; const loserId = document.getElementById("loser").value;
-    if (winnerId === loserId) return alert("Scegli giocatori diversi!");
+    const wId = document.getElementById("winner").value; const lId = document.getElementById("loser").value;
+    if (wId === lId) return alert("Scegli giocatori diversi!");
     const btn = document.getElementById("save-match-btn"); btn.disabled = true;
 
     try {
-        const wData = (await getDoc(doc(db, "players", winnerId))).data();
-        const lData = (await getDoc(doc(db, "players", loserId))).data();
+        const wData = (await getDoc(doc(db, "players", wId))).data(); const lData = (await getDoc(doc(db, "players", lId))).data();
+        const mDateObj = new Date(document.getElementById('match-date').value);
         
-        // Lettura Data Manuale
-        const matchDateStr = document.getElementById('match-date').value;
-        const matchDateObj = new Date(matchDateStr);
-        const matchTimestamp = Timestamp.fromDate(matchDateObj); // Converte per Firebase
-
-        // Formato e Moltiplicatore
-        const format = document.getElementById("format").value;
-        let formatMultiplier = 1;
-        let customSets = null, customPoints = null;
-
-        if(format === "21") formatMultiplier = 1.2;
-        else if(format === "bo3_11") formatMultiplier = 1.5;
-        else if(format === "bo3_21") formatMultiplier = 1.8;
+        let fmtMult = 1.0; const format = document.getElementById("format").value;
+        let cSets = null, cPts = null;
+        if(format === "21") fmtMult = 1.2; else if(format === "bo3_11") fmtMult = 1.5; else if(format === "bo3_21") fmtMult = 1.8;
         else if(format === "custom") {
-            customSets = parseInt(document.getElementById("custom-sets").value);
-            customPoints = parseInt(document.getElementById("custom-points").value);
-            // Calcolo moltiplicatore custom: base 1.0 + (bonus per i set) + (bonus per i punti)
-            formatMultiplier = 1.0 + (customSets > 1 ? (customSets-1)*0.25 : 0) + (customPoints > 11 ? (customPoints-11)*0.02 : 0);
+            cSets = parseInt(document.getElementById("custom-sets").value); cPts = parseInt(document.getElementById("custom-points").value);
+            fmtMult = 1.0 + (cSets > 1 ? (cSets-1)*0.25 : 0) + (cPts > 11 ? (cPts-11)*0.02 : 0);
         }
 
-        // Sistema Anti-Spam retroattivo (Conta le partite di QUELLA data)
-        let matchesThatDay = 0;
-        const targetDateString = matchDateObj.toDateString(); // Es. "Tue Aug 15 2023"
+        // CAP Penalità sulle partite dello stesso giorno
+        let matchesThatDay = 0; const targetDateString = mDateObj.toDateString();
         matchesData.forEach(m => {
             if(m.timestamp && m.timestamp.toDate().toDateString() === targetDateString) {
-                if((m.winner === winnerId && m.loser === loserId) || (m.winner === loserId && m.loser === winnerId)) {
-                    matchesThatDay++;
-                }
+                if((m.winner === wId && m.loser === lId) || (m.winner === lId && m.loser === wId)) matchesThatDay++;
             }
         });
 
-        // Penalità Spam
+        // Nuova formula (Es. La partita in corso è la numero: matchesThatDay + 1)
+        const matchNumber = matchesThatDay + 1;
         let spamPenalty = 1.0;
-        if (matchesThatDay >= 3 && matchesThatDay < 5) spamPenalty = 0.75; // Partite 4 e 5: 75%
-        else if (matchesThatDay >= 5 && matchesThatDay < 8) spamPenalty = 0.50; // Partite 6, 7, 8: 50%
-        else if (matchesThatDay >= 8) spamPenalty = 0.20; // Partita 9+: 20%
+        if (matchNumber >= 6 && matchNumber <= 10) spamPenalty = 0.75;
+        else if (matchNumber >= 11 && matchNumber <= 14) spamPenalty = 0.45;
+        else if (matchNumber >= 15) spamPenalty = 0.25;
 
-        // Calcolo Elo Finale
-        const expectedWinner = 1 / (1 + Math.pow(10, (lData.rating - wData.rating) / 400));
-        let points = Math.max(1, Math.round(32 * (1 - expectedWinner) * formatMultiplier * spamPenalty));
+        const expW = 1 / (1 + Math.pow(10, (lData.rating - wData.rating) / 400));
+        let points = Math.max(1, Math.round(32 * (1 - expW) * fmtMult * spamPenalty));
 
-        const newWR = wData.rating + points; const newLR = lData.rating - points;
-        await updateDoc(doc(db, "players", winnerId), { rating: newWR, wins: wData.wins + 1 });
-        await updateDoc(doc(db, "players", loserId), { rating: newLR, losses: lData.losses + 1 });
+        const nW = wData.rating + points; const nL = lData.rating - points;
+        await updateDoc(doc(db, "players", wId), { rating: nW, wins: wData.wins + 1 });
+        await updateDoc(doc(db, "players", lId), { rating: nL, losses: lData.losses + 1 });
 
-        // Salva in DB
         await addDoc(matchesRef, {
-            winner: winnerId, loser: loserId, winnerScore: document.getElementById("score-winner").value, loserScore: document.getElementById("score-loser").value,
-            format: format, customSets: customSets, customPoints: customPoints, notes: document.getElementById("match-notes").value, 
-            pointsExchanged: points, winnerNewRating: newWR, loserNewRating: newLR, 
-            timestamp: matchTimestamp // <--- Data inserita dall'utente!
+            winner: wId, loser: lId, winnerScore: document.getElementById("score-winner").value, loserScore: document.getElementById("score-loser").value,
+            format: format, customSets: cSets, customPoints: cPts, notes: document.getElementById("match-notes").value, 
+            pointsExchanged: points, winnerNewRating: nW, loserNewRating: nL, timestamp: Timestamp.fromDate(mDateObj) 
         });
-        document.getElementById("match-form").reset();
-        
-        // Reimposta la data attuale nel form dopo il salvataggio
-        const now = new Date();
-        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-        document.getElementById('match-date').value = now.toISOString().slice(0,16);
-        
-    } catch(e) { console.error(e); }
+        document.getElementById("match-form").reset(); setNow(); // Ripristina data dopo salvataggio
+    } catch(e) {}
     btn.disabled = false;
 });
 
-// --- L'ORACOLO (Restato identico, ma usa i nuovi ID per evitare scroll) ---
+// --- SEZIONE STATISTICHE AVANZATE ---
+
+// 1. Testa a Testa (H2H)
+function updateH2H() {
+    const p1 = document.getElementById("h2h-p1").value; const p2 = document.getElementById("h2h-p2").value;
+    const resDiv = document.getElementById("h2h-result");
+    if(!p1 || !p2 || p1 === p2) return resDiv.innerHTML = "Seleziona due giocatori diversi per il confronto.";
+    
+    let w1 = 0, w2 = 0;
+    matchesData.forEach(m => {
+        if(m.winner === p1 && m.loser === p2) w1++;
+        if(m.winner === p2 && m.loser === p1) w2++;
+    });
+    
+    const n1 = playersData.find(x=>x.id===p1).name; const n2 = playersData.find(x=>x.id===p2).name;
+    const tot = w1 + w2;
+    if(tot === 0) return resDiv.innerHTML = `Non ci sono ancora sfide registrate tra ${n1} e ${n2}.`;
+    
+    resDiv.innerHTML = `
+        <div style="margin-bottom: 10px; font-weight: bold; color: var(--text-color);">Totale Scontri Diretti: ${tot}</div>
+        <div style="display: flex; align-items: center; justify-content: space-between; font-weight: bold;">
+            <span style="color: ${w1>w2 ? 'var(--success-color)' : 'var(--text-color)'};">${n1} (${w1})</span>
+            <span style="color: ${w2>w1 ? 'var(--success-color)' : 'var(--text-color)'};">${n2} (${w2})</span>
+        </div>
+        <div style="width: 100%; height: 10px; background: #eee; border-radius: 5px; overflow: hidden; margin-top: 5px; display: flex;">
+            <div style="height: 100%; width: ${(w1/tot)*100}%; background: var(--success-color);"></div>
+            <div style="height: 100%; width: ${(w2/tot)*100}%; background: var(--danger-color);"></div>
+        </div>
+    `;
+}
+document.getElementById("h2h-p1").addEventListener("change", updateH2H);
+document.getElementById("h2h-p2").addEventListener("change", updateH2H);
+
+// 2. Leaderboard Mensile (Chi ha guadagnato più punti)
+function populateMonths() {
+    const select = document.getElementById("month-select");
+    const months = new Set();
+    matchesData.forEach(m => {
+        if(m.timestamp) {
+            const d = m.timestamp.toDate();
+            months.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+        }
+    });
+    
+    const arr = Array.from(months).sort().reverse();
+    select.innerHTML = '<option value="">Seleziona Mese...</option>';
+    arr.forEach(val => {
+        const [y, m] = val.split('-');
+        const nomeMese = new Date(y, m-1, 1).toLocaleString('it-IT', { month: 'long', year: 'numeric' });
+        select.innerHTML += `<option value="${val}">${nomeMese.charAt(0).toUpperCase() + nomeMese.slice(1)}</option>`;
+    });
+}
+document.getElementById("month-select").addEventListener("change", (e) => {
+    const resDiv = document.getElementById("monthly-leaderboard");
+    if(!e.target.value) return resDiv.innerHTML = "<p style='text-align:center; color: #888; font-size: 0.9rem;'>Seleziona un mese.</p>";
+    
+    const [year, month] = e.target.value.split('-');
+    let pointsGained = {}; // Mappa { playerId : punti netti guadagnati }
+    
+    matchesData.forEach(m => {
+        if(m.timestamp) {
+            const d = m.timestamp.toDate();
+            if(d.getFullYear() == year && d.getMonth() + 1 == month) {
+                pointsGained[m.winner] = (pointsGained[m.winner] || 0) + m.pointsExchanged;
+                pointsGained[m.loser] = (pointsGained[m.loser] || 0) - m.pointsExchanged;
+            }
+        }
+    });
+
+    let resultHTML = '<div class="table-container"><table><thead><tr><th>Giocatore</th><th>Saldo Punti</th></tr></thead><tbody>';
+    // Ordina per punti guadagnati
+    const sorted = Object.entries(pointsGained).sort((a,b) => b[1] - a[1]);
+    
+    if(sorted.length === 0) resultHTML += '<tr><td colspan="2">Nessun dato.</td></tr>';
+    sorted.forEach(([pId, pts], index) => {
+        const pName = playersData.find(x=>x.id===pId)?.name || "Ignoto";
+        const color = pts > 0 ? 'var(--success-color)' : 'var(--danger-color)';
+        const sign = pts > 0 ? '+' : '';
+        resultHTML += `<tr>
+            <td style="font-weight: ${index === 0 ? 'bold' : 'normal'}; ${index===0 ? 'color:#d4af37;':''}">${index === 0 ? '👑 ' : ''}${pName}</td>
+            <td style="color: ${color}; font-weight: bold;">${sign}${pts}</td>
+        </tr>`;
+    });
+    resDiv.innerHTML = resultHTML + '</tbody></table></div>';
+});
+
+// 3. AI e Grafici
+document.getElementById("stats-player-select").addEventListener("change", (e) => generateSmartComment(e.target.value));
+
 function generateSmartComment(playerId) {
     const commentBox = document.getElementById("ai-comment"); const extraBox = document.getElementById("extra-stats");
     extraBox.innerHTML = ""; document.getElementById("chart-container-pie").style.display = playerId === "general" ? "none" : "block";
     if(playersData.length === 0) return commentBox.innerText = "Attendo giocatori...";
+    
     if(playerId === "general") {
         const leader = [...playersData].sort((a,b) => b.rating - a.rating)[0];
         commentBox.innerText = `🎙️ "Tavolo dominato da ${leader.name} (${Math.round(leader.rating)} pt). Chi riuscirà a buttarlo giù?"`;
         drawRealCharts("general", null); return;
     }
+    
+    // Ripristinato il commento AI lungo per il giocatore
     const p = playersData.find(x => x.id === playerId);
     const tot = p.wins + p.losses; const wr = tot > 0 ? Math.round((p.wins / tot) * 100) : 0;
     
@@ -206,16 +275,27 @@ function generateSmartComment(playerId) {
     const nBest = best ? (playersData.find(x=>x.id===best)?.name || "?") : "-";
     const nWorst = worst ? (playersData.find(x=>x.id===worst)?.name || "?") : "-";
 
-    commentBox.innerText = `🎙️ "Analisi su ${p.name}: ${wr >= 60 ? 'Un vero cecchino' : (wr < 40 ? 'In difficoltà' : 'Altalenante')} con il ${wr}% di vittorie."`;
-    extraBox.innerHTML = `<div class="stat-box"><span>Partite</span><strong>${tot}</strong></div><div class="stat-box"><span>Vittima</span><strong>${nBest}</strong></div><div class="stat-box"><span>Bestia Nera</span><strong>${nWorst}</strong></div>`;
+    // Costruzione dinamica del commento AI Ripristinata
+    let comment = `🎙️ "Analisi su ${p.name}: `;
+    if(tot < 3) comment += `Ancora in fase di riscaldamento. "`;
+    else {
+        if(wr >= 65) comment += `Forma smagliante! Con un Win Rate del ${wr}% è un vero e proprio cecchino. "`;
+        else if(wr >= 45) comment += `Giocatore solido (Win Rate: ${wr}%). Alterna colpi da maestro a cali, ma è rognoso per tutti. "`;
+        else comment += `Momento di flessione (Win Rate: ${wr}%). Basterà ritrovare il dritto giusto! "`;
+
+        if(worst && lWorst >= 2) comment += `Deve capire come battere ${nWorst}, che è la sua bestia nera."`;
+        else if(best && wBest >= 2) comment += `Si esalta sempre quando vede ${nBest} dall'altra parte della retina."`;
+    }
+
+    commentBox.innerText = comment;
+    extraBox.innerHTML = `<div class="stat-box"><span>Partite Giocate</span><strong>${tot}</strong></div><div class="stat-box"><span>Vittima Preferita</span><strong>${nBest}</strong></div><div class="stat-box"><span>Bestia Nera</span><strong>${nWorst}</strong></div>`;
     drawRealCharts("single", p);
 }
 
 function drawRealCharts(type, p) {
     if(lineChart) lineChart.destroy(); if(pieChart) pieChart.destroy();
     const ctx = document.getElementById('rankingChart').getContext('2d');
-    
-    Chart.defaults.color = getComputedStyle(document.body).getPropertyValue('--text-color').trim(); // Colore testi grafici dark mode
+    Chart.defaults.color = getComputedStyle(document.body).getPropertyValue('--text-color').trim();
     Chart.defaults.font.family = 'Inter, sans-serif';
 
     if(type === "general") {

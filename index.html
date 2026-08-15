@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ping Pong Ranking QT</title>
-    <!-- Usa un font di sistema moderno -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -39,10 +38,12 @@
                         <div><label>Punti Sconf.</label><input type="number" id="score-loser" min="0" required></div>
                     </div>
                     
-                    <!-- NUOVO: Selezione Data -->
                     <div>
                         <label>Data e Ora Partita</label>
-                        <input type="datetime-local" id="match-date" required>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="datetime-local" id="match-date" required style="flex: 1;">
+                            <button type="button" id="btn-now" class="btn-secondary" style="width: auto; padding: 0 15px;">Adesso</button>
+                        </div>
                     </div>
 
                     <div>
@@ -56,8 +57,7 @@
                         </select>
                     </div>
 
-                    <!-- NUOVO: Opzioni Formato Personalizzato (Nascosto di default) -->
-                    <div id="custom-format-details" style="display: none; background: var(--bg-color); padding: 10px; border-radius: 8px;">
+                    <div id="custom-format-details" style="display: none; background: var(--input-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
                         <div style="display: flex; gap: 10px;">
                             <div><label>Set Totali (Es. 5 per Bo5)</label><input type="number" id="custom-sets" min="1" value="1"></div>
                             <div><label>Punti a Set</label><input type="number" id="custom-points" min="1" value="11"></div>
@@ -90,10 +90,36 @@
             </section>
         </div>
 
-        <!-- VISTA 3: STATISTICHE -->
+        <!-- VISTA 3: STATISTICHE E H2H -->
         <div id="view-stats" class="view">
+            
+            <!-- SEZIONE: Leaderboard Mensile -->
             <section class="card">
-                <h2>Analisi Giocatore</h2>
+                <h2>📅 Giocatore del Mese</h2>
+                <select id="month-select" style="margin-bottom: 15px;">
+                    <option value="">Caricamento mesi...</option>
+                </select>
+                <div id="monthly-leaderboard">
+                    <p style="text-align:center; color: #888; font-size: 0.9rem;">Seleziona un mese per vedere chi ha dominato.</p>
+                </div>
+            </section>
+
+            <!-- SEZIONE: Testa a Testa (H2H) -->
+            <section class="card">
+                <h2>⚔️ Testa a Testa</h2>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <select id="h2h-p1"><option value="">Giocatore 1</option></select>
+                    <span style="align-self: center; font-weight: bold; color: var(--secondary-color);">VS</span>
+                    <select id="h2h-p2"><option value="">Giocatore 2</option></select>
+                </div>
+                <div id="h2h-result" style="text-align: center; font-size: 0.9rem; color: #666;">
+                    Seleziona due giocatori per il confronto.
+                </div>
+            </section>
+
+            <!-- SEZIONE: Analisi Giocatore Singolo/Gruppo -->
+            <section class="card">
+                <h2>🔍 Analisi Profilo</h2>
                 <select id="stats-player-select"><option value="general">📊 Statistiche Generali (Gruppo)</option></select>
             </section>
 
