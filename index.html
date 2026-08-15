@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ping Pong Ranking QT</title>
+    <!-- Usa un font di sistema moderno -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -33,9 +35,16 @@
                         <div><label>Sconfitto</label><select id="loser" required><option value="">Seleziona...</option></select></div>
                     </div>
                     <div class="match-details">
-                        <div><label>Punti Vincitore</label><input type="number" id="score-winner" min="11" required></div>
-                        <div><label>Punti Sconfitto</label><input type="number" id="score-loser" min="0" required></div>
+                        <div><label>Punti Vinc.</label><input type="number" id="score-winner" min="0" required></div>
+                        <div><label>Punti Sconf.</label><input type="number" id="score-loser" min="0" required></div>
                     </div>
+                    
+                    <!-- NUOVO: Selezione Data -->
+                    <div>
+                        <label>Data e Ora Partita</label>
+                        <input type="datetime-local" id="match-date" required>
+                    </div>
+
                     <div>
                         <label>Formato</label>
                         <select id="format" required>
@@ -43,10 +52,19 @@
                             <option value="21">Singola a 21 punti</option>
                             <option value="bo3_11">Al meglio delle 3 (a 11 pt)</option>
                             <option value="bo3_21">Al meglio delle 3 (a 21 pt)</option>
-                            <option value="bo5">Al meglio delle 5 (Maratona)</option>
+                            <option value="custom">⚙️ Personalizzata</option>
                         </select>
                     </div>
-                    <div><label>Note</label><input type="text" id="match-notes" placeholder="Es. Partita sudatissima..."></div>
+
+                    <!-- NUOVO: Opzioni Formato Personalizzato (Nascosto di default) -->
+                    <div id="custom-format-details" style="display: none; background: var(--bg-color); padding: 10px; border-radius: 8px;">
+                        <div style="display: flex; gap: 10px;">
+                            <div><label>Set Totali (Es. 5 per Bo5)</label><input type="number" id="custom-sets" min="1" value="1"></div>
+                            <div><label>Punti a Set</label><input type="number" id="custom-points" min="1" value="11"></div>
+                        </div>
+                    </div>
+
+                    <div><label>Note (Opzionale)</label><input type="text" id="match-notes" placeholder="Es. Partita sudatissima..."></div>
                     <button type="submit" id="save-match-btn">Salva Risultato</button>
                 </form>
             </section>
@@ -68,9 +86,7 @@
         <div id="view-history" class="view">
             <section class="card">
                 <h2>📜 Storico Partite</h2>
-                <div id="history-list">
-                    <p>Caricamento storico...</p>
-                </div>
+                <div id="history-list"><p>Caricamento storico...</p></div>
             </section>
         </div>
 
@@ -78,35 +94,31 @@
         <div id="view-stats" class="view">
             <section class="card">
                 <h2>Analisi Giocatore</h2>
-                <select id="stats-player-select">
-                    <option value="general">📊 Statistiche Generali (Gruppo)</option>
-                </select>
+                <select id="stats-player-select"><option value="general">📊 Statistiche Generali (Gruppo)</option></select>
             </section>
 
             <section class="card">
                 <h2>🎙️ La Voce del Tavolo</h2>
                 <p id="ai-comment">Sto analizzando i dati...</p>
-                <div id="extra-stats" class="extra-stats-container">
-                    <!-- Nemesi e Vittima appariranno qui -->
-                </div>
+                <div id="extra-stats" class="extra-stats-container"></div>
             </section>
 
-            <section class="card" id="chart-container-line">
+            <section class="card chart-wrapper" id="chart-container-line">
                 <h2>📈 Andamento Punti</h2>
-                <canvas id="rankingChart"></canvas>
+                <div class="canvas-container"><canvas id="rankingChart"></canvas></div>
             </section>
 
-            <section class="card" id="chart-container-pie" style="display:none;">
+            <section class="card chart-wrapper" id="chart-container-pie" style="display:none;">
                 <h2>🎯 Win Rate</h2>
-                <canvas id="winRateChart"></canvas>
+                <div class="canvas-container" style="max-height: 250px;"><canvas id="winRateChart"></canvas></div>
             </section>
         </div>
     </main>
 
     <nav class="bottom-nav">
-        <button id="nav-arena" class="nav-btn active">🏓 Arena</button>
-        <button id="nav-history" class="nav-btn">📜 Storico</button>
-        <button id="nav-stats" class="nav-btn">📊 Statistiche</button>
+        <button id="nav-arena" class="nav-btn active">🏓<br><span>Arena</span></button>
+        <button id="nav-history" class="nav-btn">📜<br><span>Storico</span></button>
+        <button id="nav-stats" class="nav-btn">📊<br><span>Statistiche</span></button>
     </nav>
 
     <script type="module" src="app.js"></script>
