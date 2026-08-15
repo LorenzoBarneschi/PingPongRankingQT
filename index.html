@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ping Pong Ranking QT</title>
-    <!-- Qui collegheremo il CSS -->
     <link rel="stylesheet" href="style.css">
-    <!-- Qui collegheremo il Manifest per la PWA -->
     <link rel="manifest" href="manifest.json">
+    <!-- Libreria per i futuri grafici -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -16,16 +16,35 @@
     </header>
 
     <main>
-        <!-- SEZIONE 1: Aggiungi Partita -->
+        <!-- SEZIONE: Classifica -->
+        <section id="ranking-section" class="card">
+            <h2>🏆 Classifica Live</h2>
+            <div class="table-container">
+                <table id="ranking-table">
+                    <thead>
+                        <tr>
+                            <th>Pos</th>
+                            <th>Giocatore</th>
+                            <th>Punti</th>
+                            <th>V-S</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ranking-list">
+                        <tr><td colspan="4">Caricamento...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- SEZIONE: Nuova Partita -->
         <section id="add-match-section" class="card">
-            <h2>Nuova Partita</h2>
+            <h2>⚔️ Nuova Partita</h2>
             <form id="match-form">
                 <div class="players-inputs">
                     <div>
                         <label>Vincitore</label>
                         <select id="winner" required>
                             <option value="">Seleziona...</option>
-                            <!-- I nomi li caricheremo da JS -->
                         </select>
                     </div>
                     <div>
@@ -48,34 +67,34 @@
                 </div>
 
                 <div>
-                    <label>Formato / Luogo</label>
+                    <label>Formato</label>
                     <select id="format" required>
-                        <option value="11">Partita a 11</option>
-                        <option value="21">Partita a 21</option>
-                        <option value="bo3">Al meglio delle 3</option>
+                        <option value="11">A 11 punti</option>
+                        <option value="21">A 21 punti</option>
+                        <option value="bo3">Al meglio delle 3 (Bo3)</option>
                     </select>
                 </div>
 
                 <div>
                     <label>Note (Opzionale)</label>
-                    <input type="text" id="match-notes" placeholder="Es. Partita sudattisima, vento forte...">
+                    <input type="text" id="match-notes" placeholder="Es. Partita sudatissima...">
                 </div>
 
-                <button type="submit">Salva Risultato</button>
+                <button type="submit" id="save-match-btn">Salva Risultato</button>
             </form>
         </section>
 
-        <!-- SEZIONE 2: Classifica -->
-        <section id="ranking-section" class="card">
-            <h2>Classifica Live 🏆</h2>
-            <ul id="ranking-list">
-                <!-- La classifica apparirà qui tramite JS -->
-                <li>Caricamento in corso...</li>
-            </ul>
+        <!-- SEZIONE: Aggiungi Giocatore -->
+        <section id="add-player-section" class="card">
+            <h2>👤 Aggiungi Giocatore</h2>
+            <form id="player-form">
+                <input type="text" id="new-player-name" placeholder="Nome giocatore..." required>
+                <button type="submit" class="btn-secondary">Aggiungi</button>
+            </form>
         </section>
+
     </main>
 
-    <!-- Questo dice al browser che il nostro file JS è un modulo e gestirà Firebase -->
     <script type="module" src="app.js"></script>
 </body>
 </html>
