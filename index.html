@@ -4,13 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ping Pong Ranking QT</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Nuovi font: Inter per il testo, Righteous per il titolo -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Righteous&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <header>
-        <h1>🏓 Ping Pong QT</h1>
+        <h1>Ping Pong QT</h1>
     </header>
 
     <main>
@@ -47,28 +48,30 @@
                     </div>
 
                     <div>
-                        <label>Formato</label>
+                        <label>Formato / Contesto</label>
                         <select id="format" required>
-                            <option value="11">Singola a 11 punti</option>
-                            <option value="21">Singola a 21 punti</option>
-                            <option value="bo3_11">Al meglio delle 3 (a 11 pt)</option>
-                            <option value="bo3_21">Al meglio delle 3 (a 21 pt)</option>
+                            <option value="11">Singola a 11 pt</option>
+                            <option value="21">Singola a 21 pt</option>
+                            <option value="bo3_11">Bo3 (a 11 pt)</option>
+                            <option value="bo3_21">Bo3 (a 21 pt)</option>
+                            <option value="tournament_match">🏆 Scontro di Torneo (Rating x1.5)</option>
+                            <option value="tournament_final">👑 FINALE di Torneo (Rating x2.0)</option>
                             <option value="custom">⚙️ Personalizzata</option>
                         </select>
                     </div>
 
                     <div id="custom-format-details" style="display: none; background: var(--input-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
                         <div style="display: flex; gap: 10px;">
-                            <div><label>Set Totali (Es. 5 per Bo5)</label><input type="number" id="custom-sets" min="1" value="1"></div>
+                            <div><label>Set Totali (Es. 5)</label><input type="number" id="custom-sets" min="1" value="1"></div>
                             <div><label>Punti a Set</label><input type="number" id="custom-points" min="1" value="11"></div>
                         </div>
                     </div>
 
-                    <div><label>Note (Opzionale)</label><input type="text" id="match-notes" placeholder="Es. Partita sudatissima..."></div>
+                    <div><label>Note (Opzionale)</label><input type="text" id="match-notes" placeholder="Es. Vento forte..."></div>
                     <button type="submit" id="save-match-btn">Salva Risultato</button>
                 </form>
             </section>
-
+            
             <section class="card">
                 <h2>⚙️ Gestione Giocatori</h2>
                 <form id="player-form" style="margin-bottom: 15px;">
@@ -93,18 +96,14 @@
         <!-- VISTA 3: STATISTICHE E H2H -->
         <div id="view-stats" class="view">
             
-            <!-- SEZIONE: Leaderboard Mensile -->
+            <!-- Mensile -->
             <section class="card">
                 <h2>📅 Giocatore del Mese</h2>
-                <select id="month-select" style="margin-bottom: 15px;">
-                    <option value="">Caricamento mesi...</option>
-                </select>
-                <div id="monthly-leaderboard">
-                    <p style="text-align:center; color: #888; font-size: 0.9rem;">Seleziona un mese per vedere chi ha dominato.</p>
-                </div>
+                <select id="month-select" style="margin-bottom: 15px;"><option value="">Caricamento mesi...</option></select>
+                <div id="monthly-leaderboard"><p style="text-align:center; color: #888;">Seleziona un mese.</p></div>
             </section>
 
-            <!-- SEZIONE: Testa a Testa (H2H) -->
+            <!-- H2H -->
             <section class="card">
                 <h2>⚔️ Testa a Testa</h2>
                 <div style="display: flex; gap: 10px; margin-bottom: 15px;">
@@ -112,12 +111,10 @@
                     <span style="align-self: center; font-weight: bold; color: var(--secondary-color);">VS</span>
                     <select id="h2h-p2"><option value="">Giocatore 2</option></select>
                 </div>
-                <div id="h2h-result" style="text-align: center; font-size: 0.9rem; color: #666;">
-                    Seleziona due giocatori per il confronto.
-                </div>
+                <div id="h2h-result" style="text-align: center; font-size: 0.9rem; color: #666;">Seleziona due giocatori.</div>
             </section>
 
-            <!-- SEZIONE: Analisi Giocatore Singolo/Gruppo -->
+            <!-- Profilo e Oracolo -->
             <section class="card">
                 <h2>🔍 Analisi Profilo</h2>
                 <select id="stats-player-select"><option value="general">📊 Statistiche Generali (Gruppo)</option></select>
@@ -125,10 +122,15 @@
 
             <section class="card">
                 <h2>🎙️ La Voce del Tavolo</h2>
+                <!-- Qui apparirà il titolo epico -->
+                <div id="epic-title-container" style="text-align: center; margin-bottom: 15px; display: none;">
+                    <span id="player-epic-title" style="background: linear-gradient(45deg, #d4af37, #b8860b); color: white; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; text-transform: uppercase; box-shadow: 0 4px 10px rgba(212,175,55,0.4); font-family: 'Righteous', sans-serif; letter-spacing: 1px;">Il Titolo</span>
+                </div>
                 <p id="ai-comment">Sto analizzando i dati...</p>
                 <div id="extra-stats" class="extra-stats-container"></div>
             </section>
 
+            <!-- Grafici -->
             <section class="card chart-wrapper" id="chart-container-line">
                 <h2>📈 Andamento Punti</h2>
                 <div class="canvas-container"><canvas id="rankingChart"></canvas></div>
@@ -144,7 +146,7 @@
     <nav class="bottom-nav">
         <button id="nav-arena" class="nav-btn active">🏓<br><span>Arena</span></button>
         <button id="nav-history" class="nav-btn">📜<br><span>Storico</span></button>
-        <button id="nav-stats" class="nav-btn">📊<br><span>Statistiche</span></button>
+        <button id="nav-stats" class="nav-btn">📊<br><span>Stats</span></button>
     </nav>
 
     <script type="module" src="app.js"></script>
