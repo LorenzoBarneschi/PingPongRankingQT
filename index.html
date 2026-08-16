@@ -118,70 +118,99 @@
             <section class="card chart-wrapper" id="chart-container-pie" style="display:none;"><h2>🎯 Win Rate</h2><div class="canvas-container" style="max-height: 250px;"><canvas id="winRateChart"></canvas></div></section>
         </div>
 
-        <!-- VISTA 4: TORNEI (COMPLETA) -->
+        <!-- VISTA 4: TORNEI (SUPER AGGIORNATA) -->
         <div id="view-tournaments" class="view">
             <div class="view-header"><h2>👑 I Tornei</h2><p class="subtitle">La via per la Gloria</p></div>
             
+            <!-- CREAZIONE TORNEO -->
             <section id="tour-setup-section" class="card">
                 <h2>Crea Nuovo Torneo</h2>
-                <p style="font-size: 0.85rem; color: #666; margin-bottom: 15px;">Quota ingresso (Buy-in): <strong>0.5%</strong> dei punti. Montepremi al 1°, 2° e 3° posto.</p>
+                <p style="font-size: 0.85rem; color: #666; margin-bottom: 15px;">Buy-in: <strong>0.5%</strong> dei punti. Da 4 a 8 giocatori.</p>
                 <div><label>Data Torneo</label><input type="datetime-local" id="tour-date" required style="margin-bottom: 15px;"></div>
-                <label>Partecipanti (Min. 4)</label>
+                <label>Partecipanti Selezionati</label>
                 <div id="tournament-players-checkboxes" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; background: var(--input-bg); padding: 10px; border-radius: 12px; max-height: 200px; overflow-y: auto;"></div>
-                <button id="btn-start-tournament" class="btn-secondary" style="width: 100%;">Avvia Torneo e Calcola Montepremi</button>
+                
+                <label>Modalità Torneo</label>
+                <select id="tour-mode" style="margin-bottom: 20px;">
+                    <option value="auto">🏆 Tabellone Magico (Automatico, Live)</option>
+                    <option value="manual">✍️ Torneo Manuale (Partite del passato)</option>
+                </select>
+
+                <button id="btn-start-tournament" class="btn-secondary" style="width: 100%;">Genera e Preleva Quote</button>
             </section>
 
+            <!-- TORNEO ATTIVO -->
             <section id="active-tournament-section" class="card" style="display: none; border: 2px solid #d4af37; padding-top: 10px;">
-                <div style="text-align: right; margin-bottom: 10px;"><button id="btn-cancel-active-tour" style="background: transparent; color: var(--danger-color); font-size: 0.8rem; padding: 5px; box-shadow: none;">❌ Annulla Torneo</button></div>
+                <div style="text-align: right; margin-bottom: 10px;"><button id="btn-cancel-active-tour" style="background: transparent; color: var(--danger-color); font-size: 0.8rem; padding: 5px; box-shadow: none;">❌ Annulla Torneo e Rimborsa</button></div>
                 
-                <h2 style="color: #d4af37; text-align: center; margin-bottom: 5px;">🏆 Tabellone Torneo</h2>
+                <h2 style="color: #d4af37; text-align: center; margin-bottom: 5px;">🏆 Torneo in Corso</h2>
                 <div style="background: var(--input-bg); padding: 10px; border-radius: 8px; margin-bottom: 20px; text-align: center; border: 1px solid #d4af37;">
                     <span style="font-size: 0.85rem; color: #888; text-transform: uppercase;">Montepremi in palio</span><br>
                     <strong style="font-size: 1.5rem; color: #d4af37;" id="tour-pot">0</strong><span style="color: #d4af37;"> pt</span>
                 </div>
                 
-                <button id="btn-auto-matchmaker" style="width: 100%; margin-bottom: 15px; background-color: #3a0ca3;">🎲 Sorteggio Casuale</button>
-                <p id="auto-match-suggestions" style="font-size: 0.85rem; color: #3a0ca3; background: rgba(58, 12, 163, 0.1); padding: 10px; border-radius: 8px; display: none; margin-bottom: 15px; text-align: center; line-height: 1.5;"></p>
-
-                <h3 style="font-size: 1rem; color: var(--secondary-color); border-bottom: 1px solid var(--border-color); padding-bottom: 5px; margin-bottom: 15px;">➕ Aggiungi Match al Tabellone</h3>
-                <form id="tour-match-form" style="background: var(--bg-color); padding: 15px; border-radius: 12px; margin-bottom: 25px;">
-                    <div>
-                        <label>Turno</label>
-                        <select id="tour-round" required>
-                            <option value="Preliminari">Preliminari</option>
-                            <option value="Quarti">Quarti di Finale</option>
-                            <option value="Semifinale">Semifinale</option>
-                            <option value="Finalina">Finale 3°/4° Posto</option>
-                            <option value="Finale">👑 Finalissima</option>
-                        </select>
+                <!-- SEZIONE TABELLONE AUTOMATICO -->
+                <div id="tour-auto-ui" style="display: none;">
+                    <h3 style="font-size: 1rem; color: var(--secondary-color); text-align: center; margin-bottom: 10px;">Il Tabellone</h3>
+                    <p style="text-align:center; font-size:0.8rem; color:#888; margin-bottom: 15px;">Clicca sui match col bordo rosso per giocare.</p>
+                    <div class="bracket-wrapper" id="bracket-container">
+                        <!-- Generato da JS -->
                     </div>
-                    <div style="display: flex; gap: 10px; margin-bottom: 10px; margin-top: 10px;">
-                        <div style="flex:1;"><label>Vincitore</label><select id="tour-winner" required></select></div>
-                        <div style="flex:1;"><label>Sconfitto</label><select id="tour-loser" required></select></div>
-                    </div>
-                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                        <div style="flex:1;"><label>Punti V.</label><input type="number" id="tour-score-winner" min="0" required></div>
-                        <div style="flex:1;"><label>Punti S.</label><input type="number" id="tour-score-loser" min="0" required></div>
-                    </div>
-                    <button type="submit" style="padding: 10px; font-size: 0.95rem;">Registra nel Tabellone</button>
-                </form>
-
-                <!-- IL TABELLONE GRAFICO -->
-                <h3 style="font-size: 1rem; color: var(--secondary-color); margin-bottom: 15px; text-align: center;">Il Tabellone</h3>
-                <div id="bracket-container" style="display: flex; flex-direction: column; gap: 20px; margin-bottom: 25px;">
-                    <!-- Qui JavaScript inietterà i turni graficamente -->
                 </div>
 
-                <div style="border-top: 2px dashed #d4af37; padding-top: 20px;">
-                    <h3 style="color: #d4af37; text-align: center; margin-bottom: 15px;">👑 Premiazione e Chiusura</h3>
-                    <select id="tour-1st" style="margin-bottom:10px;"><option value="">🥇 1° Classificato (60%)</option></select>
-                    <select id="tour-2nd" style="margin-bottom:10px;"><option value="">🥈 2° Classificato (30%)</option></select>
-                    <select id="tour-3rd" style="margin-bottom:15px;"><option value="">🥉 3° Classificato (10%)</option></select>
-                    <button id="btn-finish-tournament" style="width: 100%; background-color: #d4af37; color: #000; box-shadow: 0 4px 15px rgba(212,175,55,0.4);">Concludi Torneo</button>
+                <!-- SEZIONE MANUALE (Solo se scelto) -->
+                <div id="tour-manual-ui" style="display: none;">
+                    <h3 style="font-size: 1rem; color: var(--secondary-color); margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">➕ Aggiungi Match Libero</h3>
+                    <form id="tour-match-form" style="background: var(--bg-color); padding: 15px; border-radius: 12px; margin-bottom: 25px;">
+                        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                            <div style="flex:1;"><label>Vincitore</label><select id="tour-winner" required></select></div>
+                            <div style="flex:1;"><label>Sconfitto</label><select id="tour-loser" required></select></div>
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                            <div style="flex:1;"><label>Punti V.</label><input type="number" id="tour-score-winner" min="0" required></div>
+                            <div style="flex:1;"><label>Punti S.</label><input type="number" id="tour-score-loser" min="0" required></div>
+                        </div>
+                        <button type="submit" style="padding: 10px; font-size: 0.95rem;">Registra Partita</button>
+                    </form>
+                    <div id="manual-matches-list" style="font-size: 0.85rem; background: var(--input-bg); padding:10px; border-radius:8px; margin-bottom:20px;">Nessuna partita giocata.</div>
+                </div>
+
+                <!-- CONCLUSIONE -->
+                <div id="tour-completion-zone" style="border-top: 2px dashed #d4af37; padding-top: 20px; display: none;">
+                    <h3 style="color: #d4af37; text-align: center; margin-bottom: 15px;">👑 Premiazione Finale</h3>
+                    <div id="auto-podium-text" style="display:none; text-align:center; font-weight:bold; margin-bottom: 15px; font-size: 1.1rem; line-height: 1.6;"></div>
+                    <div id="manual-podium-selects" style="display:none;">
+                        <select id="tour-1st" style="margin-bottom:10px;"><option value="">🥇 1° Classificato (60%)</option></select>
+                        <select id="tour-2nd" style="margin-bottom:10px;"><option value="">🥈 2° Classificato (30%)</option></select>
+                        <select id="tour-3rd" style="margin-bottom:15px;"><option value="">🥉 3° Classificato (10%)</option></select>
+                    </div>
+                    <button id="btn-finish-tournament" style="width: 100%; background-color: #d4af37; color: #000; box-shadow: 0 4px 15px rgba(212,175,55,0.4);">Distribuisci Jackpot e Concludi</button>
                 </div>
             </section>
         </div>
     </main>
+
+    <!-- MODAL PER INSERIRE RISULTATO TABELLONE -->
+    <div id="match-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="modal-match-title" style="color: var(--primary-color); margin-bottom: 15px; text-align:center;">Turno</h3>
+            <form id="modal-form">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; font-weight:bold;">
+                    <span id="modal-p1-name" style="flex:1; text-align:right;">P1</span>
+                    <span style="margin: 0 15px; color:#888;">VS</span>
+                    <span id="modal-p2-name" style="flex:1; text-align:left;">P2</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; gap:20px; margin-bottom:20px;">
+                    <input type="number" id="modal-s1" min="0" required style="text-align:center; font-size:1.2rem;">
+                    <input type="number" id="modal-s2" min="0" required style="text-align:center; font-size:1.2rem;">
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button type="button" id="modal-btn-close" style="background:#888; flex:1;">Annulla</button>
+                    <button type="submit" style="flex:2;">Salva e Avanza</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <nav class="bottom-nav">
         <button id="nav-arena" class="nav-btn active">🏓<span>Arena</span></button>

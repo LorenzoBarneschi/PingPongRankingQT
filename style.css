@@ -38,21 +38,12 @@ tr:last-child td { border-bottom: none; }
 .rank-last { color: var(--danger-color); font-weight: bold; }
 .podium-divider td { border-bottom: 3px solid rgba(230, 57, 70, 0.15) !important; }
 
-/* STORICO (Distingue Tornei e Partite) */
-.history-item { padding: 15px; border-bottom: 1px solid var(--border-color); font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center;}
-.history-item.is-tournament { border-left: 4px solid #d4af37; background: linear-gradient(90deg, rgba(212,175,55,0.1) 0%, transparent 100%); border-radius: 8px; margin-bottom: 10px;}
+.history-item { padding: 15px 0; border-bottom: 1px solid var(--border-color); font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center;}
+.history-item.is-tournament { border-left: 4px solid #d4af37; background: linear-gradient(90deg, rgba(212,175,55,0.1) 0%, transparent 100%); border-radius: 8px; margin-bottom: 10px; padding-left: 10px;}
 .history-info { flex: 1; }
 .history-item .match-title { font-weight: 700; color: var(--text-color); margin-bottom: 5px;}
 .history-item .match-meta { font-size: 0.8rem; color: #888; line-height: 1.4;}
 .btn-delete-match { background-color: rgba(214, 40, 40, 0.1); color: var(--danger-color); padding: 8px 12px; font-size: 0.8rem; border-radius: 8px; margin-left: 10px; font-weight: 600; border:none; cursor:pointer;}
-
-/* TABELLONE TORNEO (Bracket) */
-.bracket-round { background: var(--input-bg); border-radius: 12px; padding: 15px; border: 1px solid var(--border-color); }
-.bracket-round-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--secondary-color); font-weight: 700; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;}
-.bracket-match { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); padding: 10px 15px; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 3px solid var(--primary-color);}
-.bracket-match.finale { border-left: 4px solid #d4af37; }
-.bracket-player { flex: 1; font-weight: bold; font-size: 0.95rem;}
-.bracket-score { font-weight: 700; color: var(--text-color); font-size: 1rem; background: var(--input-bg); padding: 2px 8px; border-radius: 6px;}
 
 .extra-stats-container { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
 .stat-box { flex: 1; min-width: 100px; background: var(--input-bg); padding: 12px; border-radius: 14px; text-align: center; border: 1px solid var(--border-color); }
@@ -63,8 +54,28 @@ tr:last-child td { border-bottom: none; }
 .view { display: none; } .view.active-view { display: block; animation: fadeIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
-/* NAVBAR INFERIORE */
-.bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--nav-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); display: flex; box-shadow: 0 -4px 20px rgba(0,0,0,0.05); z-index: 100; padding-bottom: env(safe-area-inset-bottom); border-radius: 25px 25px 0 0; border-top: 1px solid var(--border-color);}
+/* STILI TABELLONE (BRACKET) */
+.bracket-wrapper { display: flex; gap: 20px; overflow-x: auto; padding: 15px 5px; align-items: stretch; scroll-snap-type: x mandatory;}
+.bracket-col { display: flex; flex-direction: column; justify-content: space-around; gap: 15px; min-width: 170px; scroll-snap-align: center;}
+.b-round-title { text-align: center; font-size: 0.8rem; text-transform: uppercase; color: var(--secondary-color); font-weight: bold; margin-bottom: 10px; letter-spacing: 1px;}
+.b-match { background: var(--card-bg); border: 2px solid var(--border-color); border-radius: 10px; padding: 10px; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+.b-match.ready { border-color: var(--primary-color); cursor: pointer; animation: pulse 2s infinite; }
+.b-match.ready:active { transform: scale(0.95); }
+.b-match.done { border-color: var(--success-color); opacity: 0.9; }
+.b-match.final { border-color: #d4af37; border-width: 3px; }
+.b-player { display: flex; justify-content: space-between; font-size: 0.85rem; margin: 4px 0; font-weight: 600; color: #888; align-items: center;}
+.b-player.active { color: var(--text-color); }
+.b-player.winner { color: var(--success-color); font-weight: 700; }
+.b-player.loser { text-decoration: line-through; opacity: 0.6; }
+.b-score { background: var(--input-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9rem;}
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(230,57,70,0.4); } 70% { box-shadow: 0 0 0 6px rgba(230,57,70,0); } 100% { box-shadow: 0 0 0 0 rgba(230,57,70,0); } }
+
+/* FINESTRA MODALE */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 1000; display: none; align-items: center; justify-content: center; }
+.modal-content { background: var(--bg-color); padding: 25px; border-radius: 20px; width: 90%; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); border: 1px solid var(--border-color);}
+@keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+.bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--nav-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); display: flex; box-shadow: 0 -4px 20px rgba(0,0,0,0.05); z-index: 100; padding-bottom: env(safe-area-bottom); border-radius: 25px 25px 0 0; border-top: 1px solid var(--border-color);}
 .nav-btn { flex: 1; background: transparent; color: #888; padding: 12px 2px; font-size: 1.3rem; border:none; border-radius: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; transition: color 0.3s, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: none;}
 .nav-btn span { font-size: 0.65rem; font-weight: 700; } 
 .nav-btn.active { color: var(--primary-color); transform: translateY(-4px); } 
