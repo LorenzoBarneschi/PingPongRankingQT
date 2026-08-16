@@ -4,27 +4,13 @@
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
 body { background-color: var(--bg-color); color: var(--text-color); padding-bottom: 90px; transition: 0.3s; }
 
-/* IL BANNER PRINCIPALE IN ALTO */
-.main-top-banner { 
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); 
-    color: white; 
-    text-align: center; 
-    border-bottom-left-radius: 25px; 
-    border-bottom-right-radius: 25px;
-    box-shadow: 0 8px 20px rgba(230, 57, 70, 0.25); 
-    padding: 20px 10px;
-    position: sticky;
-    top: 0;
-    z-index: 50;
-}
-.main-top-banner h1 { font-family: 'Righteous', cursive; font-size: 1.8rem; letter-spacing: 1.5px; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); margin: 0;}
+main { max-width: 600px; margin: 0 auto; position: relative; z-index: 10; padding-top: 25px;}
 
-main { max-width: 600px; margin: 0 auto; position: relative; z-index: 10; padding-top: 10px;}
-
-/* HEADER DELLE SEZIONI INTERNE */
-.view-header { padding: 15px 20px 20px; text-align: center; }
-.view-header h2 { font-family: 'Righteous', cursive; font-size: 2rem; color: var(--primary-color); margin-bottom: 0;}
-.view-header .subtitle { color: #888; font-size: 0.9rem; font-weight: 600; }
+/* HEADER DELLE SEZIONI INTERNE: Pulito e minimale */
+.view-header { padding: 10px 20px 25px; text-align: center; }
+.view-header h1 { font-family: 'Righteous', cursive; font-size: 2.3rem; color: var(--primary-color); letter-spacing: 1px; margin-bottom: 2px;}
+.view-header h2 { font-family: 'Righteous', cursive; font-size: 2.1rem; color: var(--primary-color); margin-bottom: 2px;}
+.view-header .subtitle { color: var(--secondary-color); font-size: 0.95rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;}
 
 .card { background: var(--card-bg); border-radius: var(--border-radius); padding: 22px; margin: 0 15px 25px 15px; box-shadow: var(--card-shadow); border: 1px solid var(--border-color); }
 h2 { margin-bottom: 18px; font-size: 1.25rem; font-weight: 700; color: var(--primary-color); }
@@ -69,10 +55,10 @@ tr:last-child td { border-bottom: none; }
 .view { display: none; } .view.active-view { display: block; animation: fadeIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
-/* NAVBAR INFERIORE (Effetto bounce sui tab) */
+/* NAVBAR INFERIORE */
 .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--nav-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); display: flex; box-shadow: 0 -4px 20px rgba(0,0,0,0.05); z-index: 100; padding-bottom: env(safe-area-inset-bottom); border-radius: 25px 25px 0 0; border-top: 1px solid var(--border-color);}
 .nav-btn { flex: 1; background: transparent; color: #888; padding: 12px 5px; font-size: 1.4rem; border:none; border-radius: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; transition: color 0.3s, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: none;}
 .nav-btn span { font-size: 0.75rem; font-weight: 700; } 
-.nav-btn.active { color: var(--primary-color); transform: translateY(-4px); } /* Bounce verso l'alto quando attivo */
-.nav-btn:active { transform: scale(0.9) translateY(2px); } /* Micro-animazione tocco tab */
+.nav-btn.active { color: var(--primary-color); transform: translateY(-4px); } 
+.nav-btn:active { transform: scale(0.9) translateY(2px); } 
 #ai-comment { font-style: italic; color: var(--text-color); line-height: 1.6; padding: 16px; border-left: 4px solid var(--secondary-color); background: var(--input-bg); border-radius: 0 12px 12px 0; }
