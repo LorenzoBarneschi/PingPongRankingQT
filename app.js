@@ -8,6 +8,9 @@ const playersRef = collection(db, "players"); const matchesRef = collection(db, 
 let playersData = []; let matchesData = []; let toursData = []; let lineChart = null; let pieChart = null;
 let activeTourId = null; let activeTourData = null; let currentMatchToPlay = null;
 
+// LORENZO: QUI PUOI CAMBIARE IL PIN SEGRETO!
+const ADMIN_PIN = "2580";
+
 function setNow() { 
     const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); 
     document.getElementById('match-date').value = now.toISOString().slice(0,16); 
@@ -15,7 +18,7 @@ function setNow() {
 }
 window.addEventListener('DOMContentLoaded', setNow); 
 document.getElementById('btn-now').addEventListener('click', setNow);
-document.getElementById('btn-tour-now').addEventListener('click', setNow); // Fix tasto Adesso nel Torneo
+document.getElementById('btn-tour-now').addEventListener('click', setNow);
 document.getElementById('format').addEventListener('change', (e) => { document.getElementById('custom-format-details').style.display = e.target.value === 'custom' ? 'block' : 'none'; });
 
 const pickRnd = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -30,6 +33,18 @@ document.getElementById("nav-history").addEventListener("click", () => switchTab
 document.getElementById("nav-stats").addEventListener("click", () => { switchTab('stats'); generateSmartComment(document.getElementById("stats-player-select").value); populateMonths(); });
 document.getElementById("nav-tournaments").addEventListener("click", () => { switchTab('tournaments'); checkActiveTournament(); });
 
+// GESTIONE ADMIN (LUCCHETTO)
+document.getElementById("btn-admin-login").addEventListener("click", () => {
+    const pin = prompt("Inserisci il PIN di sicurezza per sbloccare l'eliminazione dei dati:");
+    if(pin === ADMIN_PIN) {
+        document.body.classList.add("admin-mode");
+        document.getElementById("btn-admin-login").style.display = "none";
+        alert("🔓 Accesso Garantito! Ora puoi eliminare Partite, Tornei e Giocatori.");
+    } else if(pin !== null) {
+        alert("❌ PIN errato. Riprova.");
+    }
+});
+
 // RESET
 document.getElementById("btn-hard-reset").addEventListener("click", async () => {
     if(confirm("ATTENZIONE! Riportare TUTTI a 1000 punti e azzerare V/S?")) {
@@ -41,7 +56,6 @@ document.getElementById("btn-hard-reset").addEventListener("click", async () => 
     }
 });
 
-// FUNZIONE INFALLIBILE PER I CHECKBOX
 function renderTournamentCheckboxes() {
     const container = document.getElementById("tournament-players-checkboxes");
     if(!container) return; container.innerHTML = "";
@@ -63,7 +77,7 @@ onSnapshot(query(playersRef, orderBy("rating", "desc")), (snapshot) => {
         rankingList.innerHTML += `<tr class="${rowClass}"><td class="${rankClass}">${pos}°</td><td class="${rankClass}">${p.name}</td><td class="${rankClass}">${Math.round(p.rating)}</td><td>${p.wins} - ${p.losses}</td></tr>`;
         selects.forEach(s => s.innerHTML += `<option value="${p.id}">${p.name}</option>`); pos++;
     });
-    renderTournamentCheckboxes(); // Chiamata fissa e infallibile
+    renderTournamentCheckboxes();
 });
 
 // STORICO
@@ -84,16 +98,16 @@ function renderHistory() {
         if(ev.type === 'match') {
             if(ev.tournamentId) return; 
             const wName = playersData.find(p => p.id === ev.winner)?.name || "Ignoto"; const lName = playersData.find(p => p.id === ev.loser)?.name || "Ignoto";
-            list.innerHTML += `<div class="history-item"><div class="history-info"><div class="match-title">🥇 ${wName} (${ev.winnerScore}) vs 🥈 ${lName} (${ev.loserScore})</div><div class="match-meta">📅 ${date} | 📈 Punti Elo: ${ev.pointsExchanged}</div></div><button class="btn-delete-match" onclick="deleteMatch('${ev.id}', '${ev.winner}', '${ev.loser}', ${ev.pointsExchanged})">Annulla</button></div>`;
+            list.innerHTML += `<div class="history-item"><div class="history-info"><div class="match-title">🥇 ${wName} (${ev.winnerScore}) vs 🥈 ${lName} (${ev.loserScore})</div><div class="match-meta">📅 ${date} | 📈 Punti Elo: ${ev.pointsExchanged}</div></div><button class="btn-delete-match admin-only" onclick="deleteMatch('${ev.id}', '${ev.winner}', '${ev.loser}', ${ev.pointsExchanged})">Annulla</button></div>`;
         } else {
             if(ev.status === 'active') return; 
             const n1 = playersData.find(p => p.id === ev.podium1)?.name || "?"; const n2 = playersData.find(p => p.id === ev.podium2)?.name || "?"; const n3 = playersData.find(p => p.id === ev.podium3)?.name || "?";
-            list.innerHTML += `<div class="history-item is-tournament"><div class="history-info"><div class="match-title" style="color:#d4af37; font-size:1.1rem;">🏆 Torneo del ${date}</div><div class="match-meta">🥇 ${n1} (+${ev.prizes.p1}pt)<br>🥈 ${n2} (+${ev.prizes.p2}pt)<br>🥉 ${n3} (+${ev.prizes.p3}pt)<br>💰 Pot Totale: ${ev.pot}pt</div></div><button class="btn-delete-match" onclick="deleteTournament('${ev.id}')">Annulla Torneo</button></div>`;
+            list.innerHTML += `<div class="history-item is-tournament"><div class="history-info"><div class="match-title" style="color:#d4af37; font-size:1.1rem;">🏆 Torneo del ${date}</div><div class="match-meta">🥇 ${n1} (+${ev.prizes.p1}pt)<br>🥈 ${n2} (+${ev.prizes.p2}pt)<br>🥉 ${n3} (+${ev.prizes.p3}pt)<br>💰 Pot Totale: ${ev.pot}pt</div></div><button class="btn-delete-match admin-only" onclick="deleteTournament('${ev.id}')">Annulla Torneo</button></div>`;
         }
     });
 }
 
-// CANCELLAZIONI
+// CANCELLAZIONI INVERSE
 window.deleteMatch = async (matchId, wId, lId, pts) => {
     if(!confirm("Annullare partita? I punti torneranno come prima.")) return;
     const w = await getDoc(doc(db, "players", wId)); const l = await getDoc(doc(db, "players", lId));
@@ -205,7 +219,7 @@ document.getElementById("btn-start-tournament").addEventListener("click", async 
     await addDoc(toursRef, { status: 'active', mode: mode, players: checked, pot: pot, entryFeeMap: feeMap, bracket: bracket, timestamp: Timestamp.fromDate(new Date(document.getElementById('tour-date').value)) });
 });
 
-document.getElementById("btn-cancel-active-tour").addEventListener("click", () => { deleteTournament(activeTourId); });
+document.getElementById("btn-cancel-active-tour").addEventListener("click", () => { deleteTournament(activeTourData.id); });
 
 function generateBracketData(playersArr) {
     let b = []; let p = [...playersArr].sort(() => Math.random() - 0.5); 
@@ -365,7 +379,6 @@ document.getElementById("btn-finish-tournament").addEventListener("click", async
     alert(`🏆 TORNEO CONCLUSO!\n🥇 +${prize1}pt\n🥈 +${prize2}pt\n🥉 +${prize3}pt`);
 });
 
-// H2H E MESI
 function updateH2H() {
     const p1 = document.getElementById("h2h-p1").value; const p2 = document.getElementById("h2h-p2").value;
     const resDiv = document.getElementById("h2h-result"); const narDiv = document.getElementById("h2h-narrative"); narDiv.style.display = "none";
@@ -400,7 +413,6 @@ document.getElementById("month-select").addEventListener("change", (e) => {
     resDiv.innerHTML = resultHTML + '</tbody></table></div>';
 });
 
-// ORACOLO COMPLETO
 document.getElementById("stats-player-select").addEventListener("change", (e) => generateSmartComment(e.target.value));
 
 function generateSmartComment(playerId) {

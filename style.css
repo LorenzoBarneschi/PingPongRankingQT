@@ -457,3 +457,14 @@ tr:last-child td { border-bottom: none; }
     background: var(--input-bg); 
     border-radius: 0 12px 12px 0; 
 }
+/* --- GESTIONE PERMESSI (ADMIN MODE) --- */
+/* Di default nasconde tutto ciò che ha la classe .admin-only */
+.admin-only {
+    display: none !important;
+}
+
+/* Quando il body riceve la classe .admin-mode (via JavaScript), i pulsanti appaiono */
+body.admin-mode .admin-only.delete-section { display: flex !important; }
+body.admin-mode .admin-only.reset-section { display: block !important; }
+body.admin-mode .admin-only.btn-delete-match { display: inline-block !important; }
+body.admin-mode .admin-only#btn-cancel-active-tour { display: inline-block !important; }

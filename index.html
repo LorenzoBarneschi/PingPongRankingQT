@@ -68,16 +68,22 @@
             </section>
             
             <section class="card" style="border: 2px solid #ccc;">
-                <h2>⚙️ Gestione Sistema</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h2 style="margin: 0;">⚙️ Gestione Sistema</h2>
+                    <button id="btn-admin-login" style="background: transparent; color: #888; font-size: 1.5rem; padding: 0; box-shadow: none; width: auto; height: auto;">🔒</button>
+                </div>
+
                 <form id="player-form" style="margin-bottom: 15px;">
                     <input type="text" id="new-player-name" placeholder="Nome nuovo giocatore..." required>
                     <button type="submit" class="btn-secondary">Aggiungi Giocatore</button>
                 </form>
-                <div class="delete-section">
+
+                <!-- QUESTE SEZIONI SONO INVISIBILI FINCHÉ NON INSERISCI IL PIN -->
+                <div class="delete-section admin-only">
                     <select id="delete-player-select"><option value="">Seleziona per eliminare...</option></select>
                     <button id="delete-player-btn" class="btn-danger">Elimina</button>
                 </div>
-                <div style="margin-top: 20px; text-align: center; border-top: 1px dashed #ccc; padding-top: 15px;">
+                <div class="reset-section admin-only" style="margin-top: 20px; text-align: center; border-top: 1px dashed #ccc; padding-top: 15px;">
                     <button id="btn-hard-reset" style="background-color: transparent; color: var(--danger-color); border: 1px solid var(--danger-color); font-size: 0.8rem; padding: 10px;">⚠️ RESETTA TUTTI I PUNTI A 1000</button>
                 </div>
             </section>
@@ -118,16 +124,14 @@
             <section class="card chart-wrapper" id="chart-container-pie" style="display:none;"><h2>🎯 Win Rate</h2><div class="canvas-container" style="max-height: 250px;"><canvas id="winRateChart"></canvas></div></section>
         </div>
 
-        <!-- VISTA 4: TORNEI (SUPER AGGIORNATA) -->
+        <!-- VISTA 4: TORNEI -->
         <div id="view-tournaments" class="view">
             <div class="view-header"><h2>👑 I Tornei</h2><p class="subtitle">La via per la Gloria</p></div>
             
-            <!-- CREAZIONE TORNEO -->
             <section id="tour-setup-section" class="card">
                 <h2>Crea Nuovo Torneo</h2>
                 <p style="font-size: 0.85rem; color: #666; margin-bottom: 15px;">Buy-in: <strong>0.5%</strong> dei punti. Da 4 a 8 giocatori.</p>
                 
-                <!-- FIX: Calendario contenuto e non sbordante -->
                 <div>
                     <label>Data e Ora Torneo</label>
                     <div style="display: flex; gap: 10px; margin-bottom: 15px; width: 100%;">
@@ -137,9 +141,7 @@
                 </div>
 
                 <label>Partecipanti Selezionati</label>
-                <div id="tournament-players-checkboxes" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; background: var(--input-bg); padding: 10px; border-radius: 12px; max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color);">
-                    <!-- I checkbox verranno generati qui -->
-                </div>
+                <div id="tournament-players-checkboxes" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; background: var(--input-bg); padding: 10px; border-radius: 12px; max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color);"></div>
                 
                 <label>Modalità Torneo</label>
                 <select id="tour-mode" style="margin-bottom: 20px;">
@@ -150,9 +152,9 @@
                 <button id="btn-start-tournament" class="btn-secondary" style="width: 100%;">Genera e Preleva Quote</button>
             </section>
 
-            <!-- TORNEO ATTIVO -->
             <section id="active-tournament-section" class="card" style="display: none; border: 2px solid #d4af37; padding-top: 10px;">
-                <div style="text-align: right; margin-bottom: 10px;"><button id="btn-cancel-active-tour" style="background: transparent; color: var(--danger-color); font-size: 0.8rem; padding: 5px; box-shadow: none;">❌ Annulla Torneo e Rimborsa</button></div>
+                <!-- TASTO ANNULLA TORNEO IN CORSO (Nascosto se non sei Admin) -->
+                <div style="text-align: right; margin-bottom: 10px;"><button id="btn-cancel-active-tour" class="admin-only" style="background: transparent; color: var(--danger-color); font-size: 0.8rem; padding: 5px; box-shadow: none;">❌ Annulla Torneo e Rimborsa</button></div>
                 
                 <h2 style="color: #d4af37; text-align: center; margin-bottom: 5px;">🏆 Torneo in Corso</h2>
                 <div style="background: var(--input-bg); padding: 10px; border-radius: 8px; margin-bottom: 20px; text-align: center; border: 1px solid #d4af37;">
@@ -160,16 +162,12 @@
                     <strong style="font-size: 1.5rem; color: #d4af37;" id="tour-pot">0</strong><span style="color: #d4af37;"> pt</span>
                 </div>
                 
-                <!-- SEZIONE TABELLONE AUTOMATICO -->
                 <div id="tour-auto-ui" style="display: none;">
                     <h3 style="font-size: 1rem; color: var(--secondary-color); text-align: center; margin-bottom: 10px;">Il Tabellone</h3>
                     <p style="text-align:center; font-size:0.8rem; color:#888; margin-bottom: 15px;">Clicca sui match col bordo rosso per giocare.</p>
-                    <div class="bracket-wrapper" id="bracket-container">
-                        <!-- Generato da JS -->
-                    </div>
+                    <div class="bracket-wrapper" id="bracket-container"></div>
                 </div>
 
-                <!-- SEZIONE MANUALE -->
                 <div id="tour-manual-ui" style="display: none;">
                     <h3 style="font-size: 1rem; color: var(--secondary-color); margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">➕ Aggiungi Match Libero</h3>
                     <form id="tour-match-form" style="background: var(--bg-color); padding: 15px; border-radius: 12px; margin-bottom: 25px;">
@@ -186,7 +184,6 @@
                     <div id="manual-matches-list" style="font-size: 0.85rem; background: var(--input-bg); padding:10px; border-radius:8px; margin-bottom:20px;">Nessuna partita giocata.</div>
                 </div>
 
-                <!-- CONCLUSIONE -->
                 <div id="tour-completion-zone" style="border-top: 2px dashed #d4af37; padding-top: 20px; display: none;">
                     <h3 style="color: #d4af37; text-align: center; margin-bottom: 15px;">👑 Premiazione Finale</h3>
                     <div id="auto-podium-text" style="display:none; text-align:center; font-weight:bold; margin-bottom: 15px; font-size: 1.1rem; line-height: 1.6;"></div>
@@ -201,7 +198,6 @@
         </div>
     </main>
 
-    <!-- MODAL PER INSERIRE RISULTATO TABELLONE -->
     <div id="match-modal" class="modal-overlay">
         <div class="modal-content">
             <h3 id="modal-match-title" style="color: var(--primary-color); margin-bottom: 15px; text-align:center;">Turno</h3>
