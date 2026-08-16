@@ -6,14 +6,18 @@ const app = initializeApp(firebaseConfig); const db = getFirestore(app);
 const playersRef = collection(db, "players"); const matchesRef = collection(db, "matches"); const toursRef = collection(db, "tournaments");
 
 let playersData = []; let matchesData = []; let toursData = []; let lineChart = null; let pieChart = null;
-let activeTourData = null; let currentMatchToPlay = null;
+let activeTourId = null; let activeTourData = null; let currentMatchToPlay = null;
 
 function setNow() { 
     const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); 
-    document.getElementById('match-date').value = now.toISOString().slice(0,16); document.getElementById('tour-date').value = now.toISOString().slice(0,16); 
+    document.getElementById('match-date').value = now.toISOString().slice(0,16); 
+    document.getElementById('tour-date').value = now.toISOString().slice(0,16); 
 }
-window.addEventListener('DOMContentLoaded', setNow); document.getElementById('btn-now').addEventListener('click', setNow);
+window.addEventListener('DOMContentLoaded', setNow); 
+document.getElementById('btn-now').addEventListener('click', setNow);
+document.getElementById('btn-tour-now').addEventListener('click', setNow); // Fix tasto Adesso nel Torneo
 document.getElementById('format').addEventListener('change', (e) => { document.getElementById('custom-format-details').style.display = e.target.value === 'custom' ? 'block' : 'none'; });
+
 const pickRnd = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 function switchTab(tabId) {
@@ -26,16 +30,25 @@ document.getElementById("nav-history").addEventListener("click", () => switchTab
 document.getElementById("nav-stats").addEventListener("click", () => { switchTab('stats'); generateSmartComment(document.getElementById("stats-player-select").value); populateMonths(); });
 document.getElementById("nav-tournaments").addEventListener("click", () => { switchTab('tournaments'); checkActiveTournament(); });
 
-// RESET DATABASE
+// RESET
 document.getElementById("btn-hard-reset").addEventListener("click", async () => {
     if(confirm("ATTENZIONE! Riportare TUTTI a 1000 punti e azzerare V/S?")) {
-        if(confirm("Ultimo avviso! Eliminerò anche la storicità Elo.")) {
+        if(confirm("Sei sicuro? Le partite vecchie perderanno i riferimenti Elo corretti.")) {
             const batch = writeBatch(db);
             playersData.forEach(p => { batch.update(doc(db, "players", p.id), { rating: 1000, wins: 0, losses: 0 }); });
             await batch.commit(); alert("Tutti i giocatori resettati a 1000 pt.");
         }
     }
 });
+
+// FUNZIONE INFALLIBILE PER I CHECKBOX
+function renderTournamentCheckboxes() {
+    const container = document.getElementById("tournament-players-checkboxes");
+    if(!container) return; container.innerHTML = "";
+    playersData.forEach(p => { 
+        container.innerHTML += `<label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text-color);"><input type="checkbox" value="${p.id}" class="tour-cb" style="width: 20px; height: 20px; margin: 0; flex-shrink: 0;"> <span style="flex:1;">${p.name} (${Math.round(p.rating)} pt)</span></label>`; 
+    });
+}
 
 // CLASSIFICA
 onSnapshot(query(playersRef, orderBy("rating", "desc")), (snapshot) => {
@@ -50,7 +63,7 @@ onSnapshot(query(playersRef, orderBy("rating", "desc")), (snapshot) => {
         rankingList.innerHTML += `<tr class="${rowClass}"><td class="${rankClass}">${pos}°</td><td class="${rankClass}">${p.name}</td><td class="${rankClass}">${Math.round(p.rating)}</td><td>${p.wins} - ${p.losses}</td></tr>`;
         selects.forEach(s => s.innerHTML += `<option value="${p.id}">${p.name}</option>`); pos++;
     });
-    if(document.getElementById('view-tournaments').classList.contains('active-view')) renderTournamentCheckboxes();
+    renderTournamentCheckboxes(); // Chiamata fissa e infallibile
 });
 
 // STORICO
@@ -80,7 +93,7 @@ function renderHistory() {
     });
 }
 
-// CANCELLAZIONI (CON FIX MATEMATICO PER I TORNEI)
+// CANCELLAZIONI
 window.deleteMatch = async (matchId, wId, lId, pts) => {
     if(!confirm("Annullare partita? I punti torneranno come prima.")) return;
     const w = await getDoc(doc(db, "players", wId)); const l = await getDoc(doc(db, "players", lId));
@@ -94,54 +107,30 @@ window.deleteTournament = async (tourId) => {
     const t = toursData.find(x => x.id === tourId); if(!t) return;
     
     try {
-        // Scarichiamo la situazione di tutti i giocatori in una "Lavagna locale" per non sovrascrivere dati!
-        const pSnap = await getDocs(query(playersRef));
-        let localP = {}; pSnap.forEach(d => { localP[d.id] = d.data(); });
+        const pSnap = await getDocs(query(playersRef)); let localP = {}; pSnap.forEach(d => { localP[d.id] = d.data(); });
         
-        // 1. Togliamo i premi del podio (se il torneo era concluso)
         if(t.podium1 && localP[t.podium1]) localP[t.podium1].rating -= t.prizes.p1;
         if(t.podium2 && localP[t.podium2]) localP[t.podium2].rating -= t.prizes.p2;
         if(t.podium3 && localP[t.podium3]) localP[t.podium3].rating -= t.prizes.p3;
         
-        // 2. Rimborsiamo il Buy-in d'ingresso a tutti
         t.players.forEach(pid => { if(localP[pid] && t.entryFeeMap[pid]) localP[pid].rating += t.entryFeeMap[pid]; });
 
-        const batch = writeBatch(db);
-        const mSnap = await getDocs(query(matchesRef));
+        const batch = writeBatch(db); const mSnap = await getDocs(query(matchesRef));
         
-        // 3. Scorriamo le partite e "Matematicamente le invertiamo" sulla lavagna locale
         mSnap.forEach(docSnap => {
             const m = docSnap.data();
             if(m.tournamentId === tourId) {
-                if(localP[m.winner]) { 
-                    localP[m.winner].rating -= m.pointsExchanged; 
-                    localP[m.winner].wins = Math.max(0, localP[m.winner].wins - 1); 
-                }
-                if(localP[m.loser]) { 
-                    localP[m.loser].rating += m.pointsExchanged; 
-                    localP[m.loser].losses = Math.max(0, localP[m.loser].losses - 1); 
-                }
-                batch.delete(docSnap.ref); // Mettiamo la partita nel cestino
+                if(localP[m.winner]) { localP[m.winner].rating -= m.pointsExchanged; localP[m.winner].wins = Math.max(0, localP[m.winner].wins - 1); }
+                if(localP[m.loser]) { localP[m.loser].rating += m.pointsExchanged; localP[m.loser].losses = Math.max(0, localP[m.loser].losses - 1); }
+                batch.delete(docSnap.ref); 
             }
         });
 
-        // 4. Salviamo i giocatori nel Database tutti insieme
-        t.players.forEach(pid => {
-            if(localP[pid]) {
-                batch.update(doc(db, "players", pid), { 
-                    rating: localP[pid].rating, 
-                    wins: localP[pid].wins, 
-                    losses: localP[pid].losses 
-                });
-            }
-        });
-
-        batch.delete(doc(db, "tournaments", tourId)); // Cancelliamo il torneo
-        await batch.commit(); // Esegui tutto!
+        t.players.forEach(pid => { if(localP[pid]) { batch.update(doc(db, "players", pid), { rating: localP[pid].rating, wins: localP[pid].wins, losses: localP[pid].losses }); } });
+        batch.delete(doc(db, "tournaments", tourId)); 
+        await batch.commit(); 
         alert("Torneo annullato. Punti ed Elo ripristinati matematicamente senza errori!");
-    } catch(e) {
-        console.error(e); alert("Errore durante l'annullamento.");
-    }
+    } catch(e) { console.error(e); alert("Errore durante l'annullamento."); }
 };
 
 document.getElementById("player-form").addEventListener("submit", async (e) => { e.preventDefault(); const n = document.getElementById("new-player-name").value.trim(); if (n) { await setDoc(doc(playersRef, n.toLowerCase()), { name: n, rating: 1000, wins: 0, losses: 0 }); document.getElementById("new-player-name").value = ""; }});
@@ -167,15 +156,11 @@ document.getElementById("match-form").addEventListener("submit", async (e) => {
     document.getElementById("match-form").reset(); setNow(); document.getElementById("save-match-btn").disabled = false;
 });
 
-// --- MOTORE TORNEI INTEGRATO E TABELLONE ---
-function renderTournamentCheckboxes() {
-    const container = document.getElementById("tournament-players-checkboxes"); container.innerHTML = "";
-    playersData.forEach(p => { container.innerHTML += `<label style="display: flex; align-items: center; gap: 10px; cursor: pointer;"><input type="checkbox" value="${p.id}" class="tour-cb" style="width: 20px; height: 20px; margin: 0;"> ${p.name} (${Math.round(p.rating)} pt)</label>`; });
-}
-
+// --- MOTORE TORNEI E TABELLONE ---
 function checkActiveTournament() {
     activeTourData = toursData.find(t => t.status === 'active');
     if(activeTourData) {
+        activeTourId = activeTourData.id;
         document.getElementById("tour-setup-section").style.display = "none";
         document.getElementById("active-tournament-section").style.display = "block";
         document.getElementById("tour-pot").innerText = activeTourData.pot;
@@ -200,11 +185,12 @@ function checkActiveTournament() {
             else tMatches.forEach(m => { const w = playersData.find(p=>p.id===m.winner)?.name; const l = playersData.find(p=>p.id===m.loser)?.name; mList.innerHTML += `<div style="border-bottom: 1px solid #ddd; padding: 5px 0;"><strong>${w}</strong> (${m.winnerScore}) ha battuto ${l} (${m.loserScore})</div>`; });
         }
     } else {
-        activeTourId = null; document.getElementById("tour-setup-section").style.display = "block"; document.getElementById("active-tournament-section").style.display = "none"; renderTournamentCheckboxes();
+        activeTourId = null; activeTourData = null;
+        document.getElementById("tour-setup-section").style.display = "block"; document.getElementById("active-tournament-section").style.display = "none"; 
+        renderTournamentCheckboxes();
     }
 }
 
-// AVVIA TORNEO (CREAZIONE BRACKET)
 document.getElementById("btn-start-tournament").addEventListener("click", async () => {
     const checked = Array.from(document.querySelectorAll(".tour-cb:checked")).map(cb => cb.value);
     if(checked.length < 4 || checked.length > 8) return alert("Minimo 4, Massimo 8 giocatori!");
@@ -214,13 +200,12 @@ document.getElementById("btn-start-tournament").addEventListener("click", async 
     for(let pid of checked) { const pData = playersData.find(x => x.id === pid); let fee = Math.max(1, Math.round(pData.rating * 0.005)); pot += fee; feeMap[pid] = fee; await updateDoc(doc(db, "players", pid), { rating: pData.rating - fee }); }
     
     const mode = document.getElementById("tour-mode").value;
-    let bracket = [];
-    if(mode === 'auto') bracket = generateBracketData(checked);
+    let bracket = []; if(mode === 'auto') bracket = generateBracketData(checked);
 
     await addDoc(toursRef, { status: 'active', mode: mode, players: checked, pot: pot, entryFeeMap: feeMap, bracket: bracket, timestamp: Timestamp.fromDate(new Date(document.getElementById('tour-date').value)) });
 });
 
-document.getElementById("btn-cancel-active-tour").addEventListener("click", () => { deleteTournament(activeTourData.id); });
+document.getElementById("btn-cancel-active-tour").addEventListener("click", () => { deleteTournament(activeTourId); });
 
 function generateBracketData(playersArr) {
     let b = []; let p = [...playersArr].sort(() => Math.random() - 0.5); 
@@ -330,7 +315,7 @@ document.getElementById("modal-form").addEventListener("submit", async (e) => {
     let points = Math.max(1, Math.round(32 * (1 - expW) * 1.0)); 
     await updateDoc(doc(db, "players", wId), { rating: wData.rating + points, wins: wData.wins + 1 });
     await updateDoc(doc(db, "players", lId), { rating: lData.rating - points, losses: lData.losses + 1 });
-    await addDoc(matchesRef, { tournamentId: activeTourData.id, winner: wId, loser: lId, winnerScore: Math.max(s1,s2), loserScore: Math.min(s1,s2), pointsExchanged: points, timestamp: Timestamp.now() });
+    await addDoc(matchesRef, { tournamentId: activeTourData.id, tourRound: cm.round, winner: wId, loser: lId, winnerScore: Math.max(s1,s2), loserScore: Math.min(s1,s2), pointsExchanged: points, timestamp: Timestamp.now() });
 
     if(cm.nextW) { let [nid, slot] = cm.nextW.split('.'); newBracket.find(x=>x.id===nid)[slot] = wId; }
     if(cm.nextL) { let [nid, slot] = cm.nextL.split('.'); newBracket.find(x=>x.id===nid)[slot] = lId; }
@@ -340,12 +325,10 @@ document.getElementById("modal-form").addEventListener("submit", async (e) => {
         if(!qs.some(x => !x.w)) { 
             let bestDiff = -999; let bestL = null;
             qs.forEach(q => { let diff = q.l === q.p1 ? (q.s1 - q.s2) : (q.s2 - q.s1); if(diff > bestDiff) { bestDiff = diff; bestL = q.l; }});
-            if(activeTourData.players.length === 6) newBracket.find(x=>x.id==='S2').p2 = bestL;
-            if(activeTourData.players.length === 7) newBracket.find(x=>x.id==='PI').p2 = bestL;
-            alert(`🎉 Il Miglior Perdente dei Quarti è ${playersData.find(x=>x.id===bestL).name}! Ripescato!`);
+            if(activeTourData.players.length === 6) { let s2m = newBracket.find(x=>x.id==='S2'); if(!s2m.p2) { s2m.p2 = bestL; alert(`🎉 Il Miglior Perdente dei Quarti è ${playersData.find(x=>x.id===bestL).name}! Ripescato!`); } }
+            if(activeTourData.players.length === 7) { let pi = newBracket.find(x=>x.id==='PI'); if(!pi.p2) { pi.p2 = bestL; alert(`🎉 ${playersData.find(x=>x.id===bestL).name} affronterà lo Spareggio per la Semifinale!`); } }
         }
     }
-
     await updateDoc(doc(db, "tournaments", activeTourData.id), { bracket: newBracket });
     document.getElementById("match-modal").style.display="none";
 });
@@ -371,7 +354,6 @@ document.getElementById("btn-finish-tournament").addEventListener("click", async
         p1 = document.getElementById("tour-1st").value; p2 = document.getElementById("tour-2nd").value; p3 = document.getElementById("tour-3rd").value;
         if(!p1 || !p2 || !p3 || p1===p2 || p1===p3 || p2===p3) return alert("Podio non valido!");
     }
-    
     if(!confirm("Concludere e distribuire il Jackpot?")) return;
     
     const prize1 = Math.round(activeTourData.pot * 0.60); const prize2 = Math.round(activeTourData.pot * 0.30); const prize3 = Math.round(activeTourData.pot * 0.10);
@@ -383,6 +365,7 @@ document.getElementById("btn-finish-tournament").addEventListener("click", async
     alert(`🏆 TORNEO CONCLUSO!\n🥇 +${prize1}pt\n🥈 +${prize2}pt\n🥉 +${prize3}pt`);
 });
 
+// H2H E MESI
 function updateH2H() {
     const p1 = document.getElementById("h2h-p1").value; const p2 = document.getElementById("h2h-p2").value;
     const resDiv = document.getElementById("h2h-result"); const narDiv = document.getElementById("h2h-narrative"); narDiv.style.display = "none";
@@ -417,6 +400,7 @@ document.getElementById("month-select").addEventListener("change", (e) => {
     resDiv.innerHTML = resultHTML + '</tbody></table></div>';
 });
 
+// ORACOLO COMPLETO
 document.getElementById("stats-player-select").addEventListener("change", (e) => generateSmartComment(e.target.value));
 
 function generateSmartComment(playerId) {
