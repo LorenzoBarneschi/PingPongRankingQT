@@ -468,3 +468,24 @@ body.admin-mode .admin-only.delete-section { display: flex !important; }
 body.admin-mode .admin-only.reset-section { display: block !important; }
 body.admin-mode .admin-only.btn-delete-match { display: inline-block !important; }
 body.admin-mode .admin-only#btn-cancel-active-tour { display: inline-block !important; }
+/* EXTENDED STATS BOXES */
+.extended-stat-box {
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 0.85rem;
+    text-align: left;
+}
+.extended-stat-box .badge-title {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--secondary-color);
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 5px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+}
+.extended-stat-box strong { color: var(--text-color); font-size: 0.9rem;}
+.match-context { color: #888; font-size: 0.75rem; display: block; margin-top: 3px; font-style: italic;}

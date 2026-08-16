@@ -10,6 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Righteous&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Libreria Leggerissima per i Coriandoli -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 <body>
     <div class="main-top-banner"><h1>Ping Pong QT</h1></div>
@@ -73,15 +75,26 @@
                     <button id="btn-admin-login" style="background: transparent; color: #888; font-size: 1.5rem; padding: 0; box-shadow: none; width: auto; height: auto;">🔒</button>
                 </div>
 
-                <form id="player-form" style="margin-bottom: 15px;">
+                <form id="player-form" style="margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 15px;">
+                    <label>Aggiungi Nuovo Giocatore</label>
                     <input type="text" id="new-player-name" placeholder="Nome nuovo giocatore..." required>
                     <button type="submit" class="btn-secondary">Aggiungi Giocatore</button>
                 </form>
 
+                <form id="edit-player-form" style="margin-bottom: 15px;">
+                    <label>Modifica Nome / Emoji (Mantiene Stats)</label>
+                    <select id="edit-player-select" required><option value="">Seleziona giocatore...</option></select>
+                    <input type="text" id="edit-player-name" placeholder="Nuovo nome + Emoji (es. Marco 🦁)" required>
+                    <button type="submit" class="btn-secondary" style="background-color: #2a9d8f;">Salva Modifica</button>
+                </form>
+
                 <!-- QUESTE SEZIONI SONO INVISIBILI FINCHÉ NON INSERISCI IL PIN -->
-                <div class="delete-section admin-only">
-                    <select id="delete-player-select"><option value="">Seleziona per eliminare...</option></select>
-                    <button id="delete-player-btn" class="btn-danger">Elimina</button>
+                <div class="delete-section admin-only" style="margin-top: 25px; border-top: 1px solid #eee; padding-top: 15px;">
+                    <label>Elimina Giocatore (Irreversibile)</label>
+                    <div style="display: flex; gap: 10px; width: 100%;">
+                        <select id="delete-player-select" style="flex: 2;"><option value="">Seleziona...</option></select>
+                        <button id="delete-player-btn" class="btn-danger" style="flex: 1; margin: 0;">Elimina</button>
+                    </div>
                 </div>
                 <div class="reset-section admin-only" style="margin-top: 20px; text-align: center; border-top: 1px dashed #ccc; padding-top: 15px;">
                     <button id="btn-hard-reset" style="background-color: transparent; color: var(--danger-color); border: 1px solid var(--danger-color); font-size: 0.8rem; padding: 10px;">⚠️ RESETTA TUTTI I PUNTI A 1000</button>
@@ -112,13 +125,16 @@
                 <p id="h2h-narrative" style="margin-top: 15px; font-style: italic; font-size: 0.9rem; color: var(--text-color); text-align: center; border-top: 1px solid var(--border-color); padding-top: 10px; display: none;"></p>
             </section>
             <section class="card" style="border: 2px solid var(--primary-color);">
-                <h2>🔍 L'Oracolo</h2>
+                <h2>🔍 L'Oracolo & Palmarès</h2>
                 <select id="stats-player-select" style="margin-bottom: 15px;"><option value="general">📊 Statistiche Generali (Gruppo)</option></select>
+                
                 <div id="epic-title-container" style="text-align: center; margin-bottom: 15px; display: none;">
                     <span id="player-epic-title" style="background: linear-gradient(45deg, #d4af37, #b8860b); color: white; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; text-transform: uppercase; font-family: 'Righteous', sans-serif; letter-spacing: 1px;">Il Titolo</span>
                 </div>
                 <p id="ai-comment">Sto analizzando i dati...</p>
                 <div id="extra-stats" class="extra-stats-container"></div>
+                <!-- Box estesi per Miglior Vittoria / Sconfitta -->
+                <div id="extended-stats" style="margin-top: 15px; display: none; flex-direction: column; gap: 10px;"></div>
             </section>
             <section class="card chart-wrapper" id="chart-container-line"><h2>📈 Andamento Punti</h2><div class="canvas-container"><canvas id="rankingChart"></canvas></div></section>
             <section class="card chart-wrapper" id="chart-container-pie" style="display:none;"><h2>🎯 Win Rate</h2><div class="canvas-container" style="max-height: 250px;"><canvas id="winRateChart"></canvas></div></section>
@@ -153,7 +169,6 @@
             </section>
 
             <section id="active-tournament-section" class="card" style="display: none; border: 2px solid #d4af37; padding-top: 10px;">
-                <!-- TASTO ANNULLA TORNEO IN CORSO (Nascosto se non sei Admin) -->
                 <div style="text-align: right; margin-bottom: 10px;"><button id="btn-cancel-active-tour" class="admin-only" style="background: transparent; color: var(--danger-color); font-size: 0.8rem; padding: 5px; box-shadow: none;">❌ Annulla Torneo e Rimborsa</button></div>
                 
                 <h2 style="color: #d4af37; text-align: center; margin-bottom: 5px;">🏆 Torneo in Corso</h2>
@@ -212,7 +227,7 @@
                     <input type="number" id="modal-s2" min="0" required style="text-align:center; font-size:1.2rem; box-sizing: border-box; max-width: 100%;">
                 </div>
                 <div style="display:flex; gap:10px;">
-                    <button type="button" id="modal-btn-close" style="background:#888; flex:1;">Annulla</button>
+                    <button type="button" id="modal-btn-close" style="background:#888; flex:1; box-shadow:none;">Annulla</button>
                     <button type="submit" style="flex:2;">Salva e Avanza</button>
                 </div>
             </form>
