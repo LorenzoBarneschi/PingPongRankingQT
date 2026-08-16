@@ -38,11 +38,21 @@ tr:last-child td { border-bottom: none; }
 .rank-last { color: var(--danger-color); font-weight: bold; }
 .podium-divider td { border-bottom: 3px solid rgba(230, 57, 70, 0.15) !important; }
 
-.history-item { padding: 15px 0; border-bottom: 1px solid var(--border-color); font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center;}
-.history-item:last-child { border-bottom: none; } .history-info { flex: 1; }
+/* STORICO (Distingue Tornei e Partite) */
+.history-item { padding: 15px; border-bottom: 1px solid var(--border-color); font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center;}
+.history-item.is-tournament { border-left: 4px solid #d4af37; background: linear-gradient(90deg, rgba(212,175,55,0.1) 0%, transparent 100%); border-radius: 8px; margin-bottom: 10px;}
+.history-info { flex: 1; }
 .history-item .match-title { font-weight: 700; color: var(--text-color); margin-bottom: 5px;}
-.history-item .match-meta { font-size: 0.8rem; color: #888; }
+.history-item .match-meta { font-size: 0.8rem; color: #888; line-height: 1.4;}
 .btn-delete-match { background-color: rgba(214, 40, 40, 0.1); color: var(--danger-color); padding: 8px 12px; font-size: 0.8rem; border-radius: 8px; margin-left: 10px; font-weight: 600; border:none; cursor:pointer;}
+
+/* TABELLONE TORNEO (Bracket) */
+.bracket-round { background: var(--input-bg); border-radius: 12px; padding: 15px; border: 1px solid var(--border-color); }
+.bracket-round-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--secondary-color); font-weight: 700; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;}
+.bracket-match { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); padding: 10px 15px; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 3px solid var(--primary-color);}
+.bracket-match.finale { border-left: 4px solid #d4af37; }
+.bracket-player { flex: 1; font-weight: bold; font-size: 0.95rem;}
+.bracket-score { font-weight: 700; color: var(--text-color); font-size: 1rem; background: var(--input-bg); padding: 2px 8px; border-radius: 6px;}
 
 .extra-stats-container { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
 .stat-box { flex: 1; min-width: 100px; background: var(--input-bg); padding: 12px; border-radius: 14px; text-align: center; border: 1px solid var(--border-color); }
@@ -53,14 +63,7 @@ tr:last-child td { border-bottom: none; }
 .view { display: none; } .view.active-view { display: block; animation: fadeIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
-/* STILI TORNEI */
-.tour-match-box { border: 1px solid var(--border-color); background: var(--card-bg); border-radius: 12px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);}
-.tour-match-box h4 { font-size: 0.9rem; color: var(--secondary-color); margin-bottom: 10px; text-transform: uppercase;}
-.tour-match-box .player-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.tour-match-box .player-name { font-weight: bold; flex: 1; }
-.tour-match-box input { width: 60px; text-align: center; padding: 8px; }
-
-/* NAVBAR INFERIORE (Aggiornata per 4 bottoni) */
+/* NAVBAR INFERIORE */
 .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--nav-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); display: flex; box-shadow: 0 -4px 20px rgba(0,0,0,0.05); z-index: 100; padding-bottom: env(safe-area-inset-bottom); border-radius: 25px 25px 0 0; border-top: 1px solid var(--border-color);}
 .nav-btn { flex: 1; background: transparent; color: #888; padding: 12px 2px; font-size: 1.3rem; border:none; border-radius: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; transition: color 0.3s, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: none;}
 .nav-btn span { font-size: 0.65rem; font-weight: 700; } 
