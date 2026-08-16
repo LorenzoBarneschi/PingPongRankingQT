@@ -7,6 +7,7 @@ const playersRef = collection(db, "players"); const matchesRef = collection(db, 
 
 let playersData = []; let matchesData = []; let lineChart = null; let pieChart = null;
 
+// Funzioni Base
 function setNow() { const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); document.getElementById('match-date').value = now.toISOString().slice(0,16); }
 window.addEventListener('DOMContentLoaded', setNow); document.getElementById('btn-now').addEventListener('click', setNow);
 document.getElementById('format').addEventListener('change', (e) => { document.getElementById('custom-format-details').style.display = e.target.value === 'custom' ? 'block' : 'none'; });
@@ -22,6 +23,9 @@ document.getElementById("nav-history").addEventListener("click", () => switchTab
 document.getElementById("nav-stats").addEventListener("click", () => {
     switchTab('stats'); generateSmartComment(document.getElementById("stats-player-select").value); populateMonths();
 });
+
+// Helper: Scelta Random
+const pickRnd = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 // CLASSIFICA
 onSnapshot(query(playersRef, orderBy("rating", "desc")), (snapshot) => {
@@ -61,8 +65,7 @@ onSnapshot(query(matchesRef, orderBy("timestamp", "desc")), (snapshot) => {
         
         historyList.innerHTML += `<div class="history-item"><div class="history-info"><div class="match-title">🥇 ${wName} (${match.winnerScore}) vs 🥈 ${lName} (${match.loserScore})</div><div class="match-meta">📅 ${date} | Fmt: ${fmt} | 📈 Punti: ${match.pointsExchanged} ${match.notes ? `<br><em>Note: ${match.notes}</em>` : ''}</div></div><button class="btn-delete-match" onclick="deleteMatch('${match.id}', '${match.winner}', '${match.loser}', ${match.pointsExchanged})">Annulla</button></div>`;
     });
-    populateMonths();
-    updateH2H(); // Aggiorna H2H se ci sono nuove partite
+    populateMonths(); updateH2H(); 
 });
 
 window.deleteMatch = async (matchId, wId, lId, pts) => {
@@ -89,8 +92,7 @@ document.getElementById("match-form").addEventListener("submit", async (e) => {
         const wData = (await getDoc(doc(db, "players", wId))).data(); const lData = (await getDoc(doc(db, "players", lId))).data();
         const mDateObj = new Date(document.getElementById('match-date').value);
         
-        let fmtMult = 1.0; const format = document.getElementById("format").value;
-        let cSets = null, cPts = null;
+        let fmtMult = 1.0; const format = document.getElementById("format").value; let cSets = null, cPts = null;
         if(format === "21") fmtMult = 1.2; else if(format === "bo3_11") fmtMult = 1.5; else if(format === "bo3_21") fmtMult = 1.8;
         else if(format === "tournament_match") fmtMult = 1.5; else if(format === "tournament_final") fmtMult = 2.0;
         else if(format === "custom") {
@@ -99,36 +101,24 @@ document.getElementById("match-form").addEventListener("submit", async (e) => {
         }
 
         let matchesThatDay = 0; const targetDateString = mDateObj.toDateString();
-        matchesData.forEach(m => {
-            if(m.timestamp && m.timestamp.toDate().toDateString() === targetDateString) {
-                if((m.winner === wId && m.loser === lId) || (m.winner === lId && m.loser === wId)) matchesThatDay++;
-            }
-        });
-
-        const matchNumber = matchesThatDay + 1;
-        let spamPenalty = 1.0;
+        matchesData.forEach(m => { if(m.timestamp && m.timestamp.toDate().toDateString() === targetDateString) { if((m.winner === wId && m.loser === lId) || (m.winner === lId && m.loser === wId)) matchesThatDay++; }});
+        
+        const matchNumber = matchesThatDay + 1; let spamPenalty = 1.0;
         if (matchNumber >= 6 && matchNumber <= 10) spamPenalty = 0.75;
         else if (matchNumber >= 11 && matchNumber <= 14) spamPenalty = 0.45;
         else if (matchNumber >= 15) spamPenalty = 0.25;
 
         const expW = 1 / (1 + Math.pow(10, (lData.rating - wData.rating) / 400));
         let points = Math.max(1, Math.round(32 * (1 - expW) * fmtMult * spamPenalty));
-
         const nW = wData.rating + points; const nL = lData.rating - points;
-        await updateDoc(doc(db, "players", wId), { rating: nW, wins: wData.wins + 1 });
-        await updateDoc(doc(db, "players", lId), { rating: nL, losses: lData.losses + 1 });
-
-        await addDoc(matchesRef, {
-            winner: wId, loser: lId, winnerScore: document.getElementById("score-winner").value, loserScore: document.getElementById("score-loser").value,
-            format: format, customSets: cSets, customPoints: cPts, notes: document.getElementById("match-notes").value, 
-            pointsExchanged: points, winnerNewRating: nW, loserNewRating: nL, timestamp: Timestamp.fromDate(mDateObj) 
-        });
+        await updateDoc(doc(db, "players", wId), { rating: nW, wins: wData.wins + 1 }); await updateDoc(doc(db, "players", lId), { rating: nL, losses: lData.losses + 1 });
+        await addDoc(matchesRef, { winner: wId, loser: lId, winnerScore: document.getElementById("score-winner").value, loserScore: document.getElementById("score-loser").value, format: format, customSets: cSets, customPoints: cPts, notes: document.getElementById("match-notes").value, pointsExchanged: points, winnerNewRating: nW, loserNewRating: nL, timestamp: Timestamp.fromDate(mDateObj) });
         document.getElementById("match-form").reset(); setNow();
     } catch(e) {}
     btn.disabled = false;
 });
 
-// --- NUOVO H2H NARRATIVO ---
+// H2H AVANZATO
 function updateH2H() {
     const p1 = document.getElementById("h2h-p1").value; const p2 = document.getElementById("h2h-p2").value;
     const resDiv = document.getElementById("h2h-result"); const narDiv = document.getElementById("h2h-narrative");
@@ -136,10 +126,7 @@ function updateH2H() {
     if(!p1 || !p2 || p1 === p2) return resDiv.innerHTML = "Seleziona due giocatori diversi.";
     
     let w1 = 0, w2 = 0;
-    // Troviamo tutte le partite tra i due, ordinate dalle più recenti
-    const h2hMatches = matchesData.filter(m => (m.winner === p1 && m.loser === p2) || (m.winner === p2 && m.loser === p1))
-                                  .sort((a,b) => b.timestamp - a.timestamp);
-    
+    const h2hMatches = matchesData.filter(m => (m.winner === p1 && m.loser === p2) || (m.winner === p2 && m.loser === p1)).sort((a,b) => b.timestamp - a.timestamp);
     h2hMatches.forEach(m => { if(m.winner === p1) w1++; else w2++; });
     const n1 = playersData.find(x=>x.id===p1).name; const n2 = playersData.find(x=>x.id===p2).name; const tot = w1 + w2;
     
@@ -147,32 +134,28 @@ function updateH2H() {
     
     resDiv.innerHTML = `<div style="margin-bottom: 10px; font-weight: bold; color: var(--text-color);">Totale Scontri: ${tot}</div><div style="display: flex; align-items: center; justify-content: space-between; font-weight: bold;"><span style="color: ${w1>w2 ? 'var(--success-color)' : 'var(--text-color)'};">${n1} (${w1})</span><span style="color: ${w2>w1 ? 'var(--success-color)' : 'var(--text-color)'};">${n2} (${w2})</span></div><div style="width: 100%; height: 10px; background: var(--input-bg); border-radius: 5px; overflow: hidden; margin-top: 5px; display: flex;"><div style="height: 100%; width: ${(w1/tot)*100}%; background: var(--success-color);"></div><div style="height: 100%; width: ${(w2/tot)*100}%; background: var(--danger-color);"></div></div>`;
 
-    // Logica Narrativa H2H (Calcolo Striscia Recente)
-    let currentStreakWinner = null; let streakCount = 0;
-    if(h2hMatches.length > 0) {
-        currentStreakWinner = h2hMatches[0].winner;
-        for(let m of h2hMatches) { if(m.winner === currentStreakWinner) streakCount++; else break; }
-    }
+    let streakWinId = null; let streakCount = 0;
+    if(h2hMatches.length > 0) { streakWinId = h2hMatches[0].winner; for(let m of h2hMatches) { if(m.winner === streakWinId) streakCount++; else break; } }
 
+    const leader = w1 > w2 ? n1 : n2; const trailer = w1 > w2 ? n2 : n1; const pWinner = streakWinId === p1 ? n1 : n2;
     let narrative = "";
-    const pWinner = currentStreakWinner === p1 ? n1 : n2;
-    const pLoser = currentStreakWinner === p1 ? n2 : n1;
 
-    if(w1 === w2) narrative = `Equilibrio perfetto. Una rivalità sul filo del rasoio dove nessuno dei due riesce a prendere il sopravvento definitivo.`;
-    else if(Math.abs(w1-w2) === 1) narrative = `Testa a testa apertissimo! Scontri sempre tesi, basta una partita per ribaltare le gerarchie.`;
-    else if(w1 === 0 || w2 === 0) narrative = `Dominio assoluto. ${w1 === 0 ? n2 : n1} ha un controllo psicologico totale su questo matchup. L'avversario ha bisogno di un miracolo.`;
-    else {
-        const leader = w1 > w2 ? n1 : n2; const trailer = w1 > w2 ? n2 : n1;
-        narrative = `I numeri parlano chiaro: ${leader} ha il pallino del gioco in questa rivalità, ma ${trailer} ha dimostrato di poter pungere.`;
+    if(w1 === w2) {
+        narrative = pickRnd([`Equilibrio perfetto. Una rivalità sul filo del rasoio dove nessuno vuole cedere.`, `Uno stallo messicano. Ogni partita è una guerra per spezzare questa parità assoluta.`]);
+    } else if(Math.abs(w1-w2) === 1) {
+        narrative = pickRnd([`${leader} ha messo la freccia, ma ${trailer} è proprio lì dietro.`, `Testa a testa apertissimo! Basta una sola partita per ribaltare le gerarchie di questa rivalità.`]);
+    } else if(w1 === 0 || w2 === 0) {
+        narrative = pickRnd([`Dominio psicologico e fisico. ${trailer} vede in ${leader} un vero e proprio incubo. Serve un miracolo per sfatare il tabù.`, `A senso unico. ${leader} ha decifrato completamente il gioco dell'avversario.`]);
+    } else {
+        narrative = pickRnd([`I numeri non mentono: ${leader} ha il pallino del gioco, ma ${trailer} ha dimostrato di poter pungere quando conta.`, `Una rivalità storica che attualmente pende a favore di ${leader}.`]);
     }
 
-    if(streakCount >= 3) narrative += ` Attualmente, ${pWinner} è in striscia aperta di ${streakCount} vittorie consecutive nello scontro diretto!`;
+    if(streakCount >= 3) narrative += pickRnd([` Attenzione: ${pWinner} è in striscia aperta di ${streakCount} vittorie consecutive nello scontro diretto!`, ` Il momento è tutto per ${pWinner}, reduce da ${streakCount} schiaffi di fila rifilati all'avversario.`]);
 
-    narDiv.innerText = `🎙️ "${narrative}"`;
-    narDiv.style.display = "block";
+    narDiv.innerText = `🎙️ "${narrative}"`; narDiv.style.display = "block";
 }
-document.getElementById("h2h-p1").addEventListener("change", updateH2H); document.getElementById("h2h-p2").addEventListener("change", updateH2H);
 
+// MESI
 function populateMonths() {
     const select = document.getElementById("month-select"); const months = new Set();
     matchesData.forEach(m => { if(m.timestamp) { const d = m.timestamp.toDate(); months.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`); }});
@@ -192,7 +175,7 @@ document.getElementById("month-select").addEventListener("change", (e) => {
     resDiv.innerHTML = resultHTML + '</tbody></table></div>';
 });
 
-// --- MOTORE NARRATIVO ESPANSO (TITOLI E GENERALE) ---
+// ORACOLO E TITOLI ESPANSI
 document.getElementById("stats-player-select").addEventListener("change", (e) => generateSmartComment(e.target.value));
 
 function generateSmartComment(playerId) {
@@ -200,24 +183,22 @@ function generateSmartComment(playerId) {
     const epicBadgeBox = document.getElementById("epic-title-container"); const epicTitleSpan = document.getElementById("player-epic-title");
     
     extraBox.innerHTML = ""; document.getElementById("chart-container-pie").style.display = playerId === "general" ? "none" : "block";
-    
     if(playersData.length === 0) { epicBadgeBox.style.display = "none"; return commentBox.innerText = "Attendo giocatori..."; }
     
+    // COMMENTI CLASSIFICA GENERALE RANDOMIZZATI
     if(playerId === "general") {
         epicBadgeBox.style.display = "none";
         const sorted = [...playersData].sort((a,b) => b.rating - a.rating);
-        const leader = sorted[0];
-        let genNar = "";
+        const leader = sorted[0]; let genNar = "";
         
         if(sorted.length > 1) {
             const gap = leader.rating - sorted[1].rating;
-            if(gap > 100) genNar = `Il tavolo è sotto la dittatura assoluta di ${leader.name}. Con un distacco incolmabile di ${Math.round(gap)} punti sul secondo, gli altri giocano solo per le briciole. Serve una rivolta!`;
-            else if(gap < 15) genNar = `Situazione incandescente al vertice! ${leader.name} è primo, ma sente il fiato sul collo degli inseguitori. Basterebbe una singola partita storta per perdere la corona.`;
-            else genNar = `Il trono è attualmente di ${leader.name} (${Math.round(leader.rating)} pt). Il gruppo è vivo e battagliero, e il livello si alza ogni giorno di più.`;
-        } else { genNar = "C'è solo un giocatore... serve uno sfidante!"; }
+            if(gap > 100) genNar = pickRnd([`Il tavolo è sotto la dittatura assoluta di ${leader.name}. Con un distacco incolmabile di ${Math.round(gap)} punti, gli altri giocano solo per le briciole. Serve una rivolta!`, `${leader.name} sta giocando un altro sport. Ha creato un abisso colossale col resto del gruppo.`]);
+            else if(gap < 15) genNar = pickRnd([`Situazione incandescente al vertice! ${leader.name} è primo, ma sente il fiato sul collo. Basterebbe un colpo di tosse per fargli perdere la corona.`, `Testa a testa in vetta! Nessuno può dormire sonni tranquilli lassù.`]);
+            else genNar = pickRnd([`Il trono è attualmente di ${leader.name} (${Math.round(leader.rating)} pt). Il gruppo è vivo e battagliero, il livello si alza.`, `Le gerarchie sono stabilite, ma la classifica è fluida. Chi sarà la sorpresa di questa settimana?`]);
+        } else { genNar = "C'è solo un giocatore nell'Arena. Chi oserà sfidarlo?"; }
         
-        commentBox.innerText = `🎙️ "${genNar}"`;
-        drawRealCharts("general", null); return;
+        commentBox.innerText = `🎙️ "${genNar}"`; drawRealCharts("general", null); return;
     }
     
     const p = playersData.find(x => x.id === playerId);
@@ -225,48 +206,41 @@ function generateSmartComment(playerId) {
     
     const playerMatches = matchesData.filter(m => m.winner === p.id || m.loser === p.id).sort((a,b) => b.timestamp - a.timestamp);
     let currentStreak = 0;
-    for(let m of playerMatches) {
-        if(m.winner === p.id && currentStreak >= 0) currentStreak++;
-        else if(m.loser === p.id && currentStreak <= 0) currentStreak--;
-        else break; 
-    }
+    for(let m of playerMatches) { if(m.winner === p.id && currentStreak >= 0) currentStreak++; else if(m.loser === p.id && currentStreak <= 0) currentStreak--; else break; }
 
-    // Nuovi Titoli Espansi
+    // TITOLI EPICI
     let title = "Il Novizio"; let narrative = "";
     const isFirst = p.id === [...playersData].sort((a,b)=>b.rating-a.rating)[0].id;
 
     if(tot < 5) {
-        title = "L'Incognita"; narrative = `È da poco sceso nell'arena. Il mistero che lo avvolge lo rende un avversario imprevedibile da decifrare.`;
+        title = "L'Incognita"; narrative = pickRnd([`È da poco sceso nell'arena. Il mistero che lo avvolge lo rende un avversario imprevedibile da decifrare.`, `Un talento grezzo. Deve ancora accumulare partite per mostrare a tutti di che pasta è fatto.`]);
     } else if (isFirst && wr > 65) {
-        title = "Il Tiranno"; narrative = `Siede sul trono con ferocia. Con un win rate del ${wr}%, non fa prigionieri. Sfiderà mai qualcuno in grado di farlo sudare?`;
+        title = pickRnd(["Il Tiranno", "Il Monarca", "L'Intoccabile"]); narrative = `Siede sul trono con ferocia. Con un win rate del ${wr}%, non fa prigionieri. Sfiderà mai qualcuno in grado di farlo sudare o si annoierà da solo lassù?`;
     } else if (isFirst && wr <= 65) {
-        title = "Il Re Equilibrato"; narrative = `Primo in classifica, ma non invincibile. Mantiene il comando con astuzia e resistenza più che con la forza bruta.`;
+        title = "Il Re Astuto"; narrative = `Primo in classifica, ma non invincibile. Mantiene il comando con l'astuzia, cadendo ogni tanto ma rialzandosi sempre al momento giusto.`;
     } else if (!isFirst && wr >= 70) {
-        title = "Il Predatore Oculto"; narrative = `Non è primo in classifica, ma vince quasi sempre (${wr}%). Forse gioca poco, ma quando lo fa è una condanna a morte per l'avversario.`;
+        title = pickRnd(["Il Predatore Oculto", "L'Esecutore", "Il Cecchino"]); narrative = `Guarda il suo Win Rate: ${wr}%. Quando gioca è una condanna a morte per chi sta dall'altra parte. Se giocasse di più, il trono cambierebbe padrone.`;
     } else if (currentStreak >= 5) {
-        title = "L'Inarrestabile"; narrative = `Totalmente "On Fire" (Striscia di ${currentStreak} vittorie consecutive). È entrato in una bolla mistica dove ogni schiacciata entra.`;
+        title = pickRnd(["L'Inarrestabile", "La Fenice", "La Cometa"]); narrative = `Totalmente "On Fire" (Striscia di ${currentStreak} vittorie). È entrato in uno stato mentale dove anche i nastri sono dalla sua parte. Chi lo fermerà?`;
     } else if (currentStreak <= -5) {
-        title = "Il Disperso"; narrative = `Un tunnel buio lungo ${Math.abs(currentStreak)} sconfitte consecutive. Sta dubitando di tutto, anche di come si impugna la racchetta. Servono energie positive.`;
+        title = pickRnd(["L'Anima Tormentata", "Il Sopravvissuto", "Il Disperso"]); narrative = `Un tunnel buio lungo ${Math.abs(currentStreak)} sconfitte. Sta dubitando delle leggi della fisica. Servono energie positive, o un esorcismo alla racchetta.`;
     } else if (wr > 40 && wr < 60 && tot > 20) {
-        title = "Il Caotico Neutrale"; narrative = `Il jolly del tavolo. Capace di battere il primo e perdere con l'ultimo nella stessa ora. Impossibile fare pronostici quando gioca lui.`;
+        title = pickRnd(["Il Caotico", "La Mina Vagante", "Il Jolly"]); narrative = `Può battere il campione del mondo o perdere col peggiore in classifica nella stessa giornata. L'imprevedibilità è la sua firma.`;
     } else if (wr <= 30 && tot > 15) {
-        title = "L'Incudine"; narrative = `Prende colpi, subisce, ma non molla mai. Il suo Win Rate (${wr}%) scoraggerebbe chiunque, ma il suo spirito è d'acciaio. Rispetto.`;
+        title = pickRnd(["L'Incudine", "Il Muro di Gomma", "Il Temerario"]); narrative = `Prende colpi, subisce, ma torna sempre al tavolo. Il suo Win Rate non racconta il coraggio d'acciaio che ci mette. Massimo rispetto per il guerriero.`;
     } else if (tot > 40 && wr >= 50) {
-        title = "Il Veterano"; narrative = `Ha visto più battaglie di chiunque altro. L'esperienza è la sua arma migliore, conosce i punti deboli di tutto il gruppo.`;
+        title = pickRnd(["Il Veterano", "Lo Stratega", "Il Maestro"]); narrative = `Ha visto più top-spin lui di chiunque altro. Non si affida solo al braccio, ma alla conoscenza dei punti deboli del gruppo.`;
     } else {
-        title = "Lo Stratega"; narrative = `Giocatore solido. Attende il momento giusto per colpire e si adatta bene all'avversario.`;
+        title = "La Promessa"; narrative = `Alterna sprazzi di genio a blackout dolorosi. Se riesce a stabilizzare la sua percentuale, può puntare alle zone alte della classifica.`;
     }
 
-    let ops = {}; playerMatches.forEach(m => {
-        if(m.winner === playerId) { ops[m.loser] = ops[m.loser] || {w:0, l:0}; ops[m.loser].w++; }
-        if(m.loser === playerId) { ops[m.winner] = ops[m.winner] || {w:0, l:0}; ops[m.winner].l++; }
-    });
+    let ops = {}; playerMatches.forEach(m => { if(m.winner === playerId) { ops[m.loser] = ops[m.loser] || {w:0, l:0}; ops[m.loser].w++; } if(m.loser === playerId) { ops[m.winner] = ops[m.winner] || {w:0, l:0}; ops[m.winner].l++; } });
     let best = null, wBest = 0, worst = null, lWorst = 0;
     for(const [id, s] of Object.entries(ops)) { if(s.w > wBest){wBest = s.w; best = id;} if(s.l > lWorst){lWorst = s.l; worst = id;} }
-    const nBest = best ? (playersData.find(x=>x.id===best)?.name || "?") : "-";
-    const nWorst = worst ? (playersData.find(x=>x.id===worst)?.name || "?") : "-";
+    const nBest = best ? (playersData.find(x=>x.id===best)?.name || "?") : "-"; const nWorst = worst ? (playersData.find(x=>x.id===worst)?.name || "?") : "-";
 
-    if(worst && lWorst >= 3) narrative += ` Il suo tallone d'Achille ha un nome preciso: ${nWorst}, una vera maledizione per lui.`;
+    if(worst && lWorst >= 3) narrative += pickRnd([` Il suo tallone d'Achille è ${nWorst}, una vera condanna.`, ` Davanti a ${nWorst} va regolarmente in tilt.`]);
+    else if(best && wBest >= 3) narrative += pickRnd([` Ha trovato nel povero ${nBest} il suo bancomat personale.`, ` Contro ${nBest} si sente onnipotente.`]);
 
     epicBadgeBox.style.display = "block"; epicTitleSpan.innerText = title;
     commentBox.innerText = `🎙️ "${narrative}"`;
@@ -277,8 +251,7 @@ function generateSmartComment(playerId) {
 function drawRealCharts(type, p) {
     if(lineChart) lineChart.destroy(); if(pieChart) pieChart.destroy();
     const ctx = document.getElementById('rankingChart').getContext('2d');
-    Chart.defaults.color = getComputedStyle(document.body).getPropertyValue('--text-color').trim();
-    Chart.defaults.font.family = 'Inter, sans-serif';
+    Chart.defaults.color = getComputedStyle(document.body).getPropertyValue('--text-color').trim(); Chart.defaults.font.family = 'Inter, sans-serif';
 
     if(type === "general") {
         lineChart = new Chart(ctx, { type: 'line', data: { labels: ['Vuoto'], datasets: [{ label: 'Generale', data: [1000] }] }, options: { maintainAspectRatio: false } });

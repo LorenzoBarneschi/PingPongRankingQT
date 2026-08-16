@@ -4,14 +4,25 @@
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
 body { background-color: var(--bg-color); color: var(--text-color); padding-bottom: 90px; transition: 0.3s; }
 
-main { max-width: 600px; margin: 0 auto; position: relative; z-index: 10;}
+/* IL BANNER PRINCIPALE IN ALTO */
+.main-top-banner { 
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); 
+    color: white; 
+    text-align: center; 
+    border-bottom-left-radius: 25px; 
+    border-bottom-right-radius: 25px;
+    box-shadow: 0 8px 20px rgba(230, 57, 70, 0.25); 
+    padding: 20px 10px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+.main-top-banner h1 { font-family: 'Righteous', cursive; font-size: 1.8rem; letter-spacing: 1.5px; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); margin: 0;}
 
-/* NUOVI HEADER DI SEZIONE INTEGRATI */
-.view-header { padding: 30px 20px 20px; text-align: center; }
-.arena-header { background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; border-bottom-left-radius: 30px; border-bottom-right-radius: 30px; margin-bottom: 25px; box-shadow: 0 8px 20px rgba(230, 57, 70, 0.2); padding-top: 40px; margin-top: -15px; }
-.arena-header h1 { font-family: 'Righteous', cursive; font-size: 2.2rem; letter-spacing: 1.5px; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
-.arena-header .subtitle { color: rgba(255,255,255,0.8); font-weight: 600; text-transform: uppercase; letter-spacing: 2px; font-size: 0.8rem; margin-top: 5px; }
+main { max-width: 600px; margin: 0 auto; position: relative; z-index: 10; padding-top: 10px;}
 
+/* HEADER DELLE SEZIONI INTERNE */
+.view-header { padding: 15px 20px 20px; text-align: center; }
 .view-header h2 { font-family: 'Righteous', cursive; font-size: 2rem; color: var(--primary-color); margin-bottom: 0;}
 .view-header .subtitle { color: #888; font-size: 0.9rem; font-weight: 600; }
 
@@ -20,10 +31,14 @@ h2 { margin-bottom: 18px; font-size: 1.25rem; font-weight: 700; color: var(--pri
 form { display: flex; flex-direction: column; gap: 18px; }
 .players-inputs, .match-details { display: flex; gap: 15px; } .players-inputs > div, .match-details > div { flex: 1; }
 label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--secondary-color); }
-input, select { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 12px; font-size: 1rem; background-color: var(--input-bg); color: var(--text-color); outline: none; transition: border 0.2s;}
-input:focus, select:focus { border-color: var(--primary-color); }
-button { background-color: var(--primary-color); color: white; border: none; padding: 16px; border-radius: 14px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 10px rgba(230,57,70,0.3);}
-button:active { transform: scale(0.97); }
+
+/* Input e Select */
+input, select { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 12px; font-size: 1rem; background-color: var(--input-bg); color: var(--text-color); outline: none; transition: border 0.2s, box-shadow 0.2s;}
+input:focus, select:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(230,57,70,0.1); }
+
+/* BOTTONI PREMIUM: Micro-animazioni elastiche */
+button { background-color: var(--primary-color); color: white; border: none; padding: 16px; border-radius: 14px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 10px rgba(230,57,70,0.3);}
+button:active { transform: scale(0.95); box-shadow: 0 2px 5px rgba(230,57,70,0.2); }
 .btn-secondary { background-color: var(--secondary-color); padding: 12px; font-size: 1rem; box-shadow: 0 4px 10px rgba(69,123,157,0.3);}
 .btn-danger { background-color: var(--danger-color); padding: 12px; box-shadow: none; }
 .delete-section { display: flex; gap: 10px; align-items: center; border-top: 1px solid var(--border-color); padding-top: 15px;} .delete-section select { flex: 2; } .delete-section button { flex: 1; margin: 0; }
@@ -54,7 +69,10 @@ tr:last-child td { border-bottom: none; }
 .view { display: none; } .view.active-view { display: block; animation: fadeIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
+/* NAVBAR INFERIORE (Effetto bounce sui tab) */
 .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--nav-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); display: flex; box-shadow: 0 -4px 20px rgba(0,0,0,0.05); z-index: 100; padding-bottom: env(safe-area-inset-bottom); border-radius: 25px 25px 0 0; border-top: 1px solid var(--border-color);}
-.nav-btn { flex: 1; background: transparent; color: #888; padding: 12px 5px; font-size: 1.4rem; border:none; border-radius: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; transition: color 0.3s, transform 0.2s;}
-.nav-btn span { font-size: 0.75rem; font-weight: 700; } .nav-btn.active { color: var(--primary-color); transform: translateY(-2px);}
+.nav-btn { flex: 1; background: transparent; color: #888; padding: 12px 5px; font-size: 1.4rem; border:none; border-radius: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; transition: color 0.3s, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: none;}
+.nav-btn span { font-size: 0.75rem; font-weight: 700; } 
+.nav-btn.active { color: var(--primary-color); transform: translateY(-4px); } /* Bounce verso l'alto quando attivo */
+.nav-btn:active { transform: scale(0.9) translateY(2px); } /* Micro-animazione tocco tab */
 #ai-comment { font-style: italic; color: var(--text-color); line-height: 1.6; padding: 16px; border-left: 4px solid var(--secondary-color); background: var(--input-bg); border-radius: 0 12px 12px 0; }
