@@ -4,19 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ping Pong Ranking QT</title>
-    <!-- Nuovi font: Inter per il testo, Righteous per il titolo -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Righteous&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <header>
-        <h1>Ping Pong QT</h1>
-    </header>
 
     <main>
         <!-- VISTA 1: ARENA -->
         <div id="view-arena" class="view active-view">
+            
+            <div class="view-header arena-header">
+                <h1>Ping Pong QT</h1>
+                <p class="subtitle">L'Arena</p>
+            </div>
+
             <section class="card">
                 <h2>🏆 Classifica Live</h2>
                 <div class="table-container">
@@ -87,14 +89,21 @@
 
         <!-- VISTA 2: STORICO -->
         <div id="view-history" class="view">
+            <div class="view-header">
+                <h2>📜 Lo Storico</h2>
+                <p class="subtitle">Tutte le battaglie registrate</p>
+            </div>
             <section class="card">
-                <h2>📜 Storico Partite</h2>
                 <div id="history-list"><p>Caricamento storico...</p></div>
             </section>
         </div>
 
         <!-- VISTA 3: STATISTICHE E H2H -->
         <div id="view-stats" class="view">
+            <div class="view-header">
+                <h2>📊 Le Statistiche</h2>
+                <p class="subtitle">L'Oracolo e i Numeri</p>
+            </div>
             
             <!-- Mensile -->
             <section class="card">
@@ -112,17 +121,15 @@
                     <select id="h2h-p2"><option value="">Giocatore 2</option></select>
                 </div>
                 <div id="h2h-result" style="text-align: center; font-size: 0.9rem; color: #666;">Seleziona due giocatori.</div>
+                <!-- Spazio per il commento narrativo della rivalità -->
+                <p id="h2h-narrative" style="margin-top: 15px; font-style: italic; font-size: 0.9rem; color: var(--text-color); text-align: center; border-top: 1px solid var(--border-color); padding-top: 10px; display: none;"></p>
             </section>
 
             <!-- Profilo e Oracolo -->
-            <section class="card">
-                <h2>🔍 Analisi Profilo</h2>
-                <select id="stats-player-select"><option value="general">📊 Statistiche Generali (Gruppo)</option></select>
-            </section>
-
-            <section class="card">
-                <h2>🎙️ La Voce del Tavolo</h2>
-                <!-- Qui apparirà il titolo epico -->
+            <section class="card" style="border: 2px solid var(--primary-color);">
+                <h2>🔍 L'Oracolo</h2>
+                <select id="stats-player-select" style="margin-bottom: 15px;"><option value="general">📊 Statistiche Generali (Gruppo)</option></select>
+                
                 <div id="epic-title-container" style="text-align: center; margin-bottom: 15px; display: none;">
                     <span id="player-epic-title" style="background: linear-gradient(45deg, #d4af37, #b8860b); color: white; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; text-transform: uppercase; box-shadow: 0 4px 10px rgba(212,175,55,0.4); font-family: 'Righteous', sans-serif; letter-spacing: 1px;">Il Titolo</span>
                 </div>
