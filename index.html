@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ping Pong Ranking QT</title>
+    
+    <!-- Icona per iOS e PWA -->
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="manifest" href="manifest.json">
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Righteous&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -14,9 +20,15 @@
         <!-- VISTA 1: ARENA -->
         <div id="view-arena" class="view active-view">
             
+            <!-- Banner Principale Compatto e Arrotondato -->
+            <div class="main-title-card">
+                <h1>Ping Pong QT</h1>
+            </div>
+
+            <!-- Titolo di Sezione (Identico a Storico e Stats) -->
             <div class="view-header">
-                <h1>🏓 Ping Pong QT</h1>
-                <p class="subtitle">L'Arena</p>
+                <h2>🏓 L'Arena</h2>
+                <p class="subtitle">La Battaglia in Diretta</p>
             </div>
 
             <section class="card">

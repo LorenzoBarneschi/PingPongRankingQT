@@ -1,0 +1,16 @@
+{
+  "name": "Ping Pong Ranking QT",
+  "short_name": "PingPong QT",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#e63946",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

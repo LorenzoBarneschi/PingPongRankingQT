@@ -4,13 +4,30 @@
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
 body { background-color: var(--bg-color); color: var(--text-color); padding-bottom: 90px; transition: 0.3s; }
 
-main { max-width: 600px; margin: 0 auto; position: relative; z-index: 10; padding-top: 25px;}
+main { max-width: 600px; margin: 0 auto; position: relative; z-index: 10; padding-top: 15px;}
 
-/* HEADER DELLE SEZIONI INTERNE: Pulito e minimale */
-.view-header { padding: 10px 20px 25px; text-align: center; }
-.view-header h1 { font-family: 'Righteous', cursive; font-size: 2.3rem; color: var(--primary-color); letter-spacing: 1px; margin-bottom: 2px;}
+/* IL BANNER DEL TITOLO: Stretto, con margini identici alle schede */
+.main-title-card {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    border-radius: var(--border-radius);
+    padding: 18px;
+    margin: 0 15px 15px 15px;
+    text-align: center;
+    box-shadow: 0 8px 20px rgba(230, 57, 70, 0.25);
+}
+.main-title-card h1 {
+    font-family: 'Righteous', cursive;
+    color: white;
+    font-size: 1.8rem;
+    letter-spacing: 1.5px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    margin: 0;
+}
+
+/* HEADER DI TUTTE LE SEZIONI (Identico per Arena, Storico e Stats) */
+.view-header { padding: 10px 20px 20px; text-align: center; }
 .view-header h2 { font-family: 'Righteous', cursive; font-size: 2.1rem; color: var(--primary-color); margin-bottom: 2px;}
-.view-header .subtitle { color: var(--secondary-color); font-size: 0.95rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;}
+.view-header .subtitle { color: var(--secondary-color); font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;}
 
 .card { background: var(--card-bg); border-radius: var(--border-radius); padding: 22px; margin: 0 15px 25px 15px; box-shadow: var(--card-shadow); border: 1px solid var(--border-color); }
 h2 { margin-bottom: 18px; font-size: 1.25rem; font-weight: 700; color: var(--primary-color); }
