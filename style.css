@@ -4,28 +4,12 @@
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
 body { background-color: var(--bg-color); color: var(--text-color); padding-bottom: 90px; transition: 0.3s; }
 
-main { max-width: 600px; margin: 0 auto; position: relative; z-index: 10; padding-top: 15px;}
+.main-top-banner { background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; text-align: center; border-bottom-left-radius: 25px; border-bottom-right-radius: 25px; box-shadow: 0 8px 20px rgba(230, 57, 70, 0.25); padding: 20px 10px; position: sticky; top: 0; z-index: 50; }
+.main-top-banner h1 { font-family: 'Righteous', cursive; font-size: 1.8rem; letter-spacing: 1.5px; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); margin: 0;}
 
-/* IL BANNER DEL TITOLO: Stretto, con margini identici alle schede */
-.main-title-card {
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-    border-radius: var(--border-radius);
-    padding: 18px;
-    margin: 0 15px 15px 15px;
-    text-align: center;
-    box-shadow: 0 8px 20px rgba(230, 57, 70, 0.25);
-}
-.main-title-card h1 {
-    font-family: 'Righteous', cursive;
-    color: white;
-    font-size: 1.8rem;
-    letter-spacing: 1.5px;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-    margin: 0;
-}
+main { max-width: 600px; margin: 0 auto; position: relative; z-index: 10; padding-top: 10px;}
 
-/* HEADER DI TUTTE LE SEZIONI (Identico per Arena, Storico e Stats) */
-.view-header { padding: 10px 20px 20px; text-align: center; }
+.view-header { padding: 10px 20px 25px; text-align: center; }
 .view-header h2 { font-family: 'Righteous', cursive; font-size: 2.1rem; color: var(--primary-color); margin-bottom: 2px;}
 .view-header .subtitle { color: var(--secondary-color); font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;}
 
@@ -35,11 +19,9 @@ form { display: flex; flex-direction: column; gap: 18px; }
 .players-inputs, .match-details { display: flex; gap: 15px; } .players-inputs > div, .match-details > div { flex: 1; }
 label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--secondary-color); }
 
-/* Input e Select */
 input, select { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 12px; font-size: 1rem; background-color: var(--input-bg); color: var(--text-color); outline: none; transition: border 0.2s, box-shadow 0.2s;}
 input:focus, select:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(230,57,70,0.1); }
 
-/* BOTTONI PREMIUM: Micro-animazioni elastiche */
 button { background-color: var(--primary-color); color: white; border: none; padding: 16px; border-radius: 14px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 10px rgba(230,57,70,0.3);}
 button:active { transform: scale(0.95); box-shadow: 0 2px 5px rgba(230,57,70,0.2); }
 .btn-secondary { background-color: var(--secondary-color); padding: 12px; font-size: 1rem; box-shadow: 0 4px 10px rgba(69,123,157,0.3);}
@@ -52,7 +34,6 @@ th, td { padding: 12px 10px; border-bottom: 1px solid var(--border-color); }
 th { background-color: rgba(69, 123, 157, 0.05); color: var(--secondary-color); text-transform: uppercase; font-size: 0.8rem; font-weight: 700;}
 th:first-child { border-top-left-radius: 14px; } th:last-child { border-top-right-radius: 14px; }
 tr:last-child td { border-bottom: none; }
-
 .rank-1 { font-weight: bold; color: #d4af37; font-size: 1.1rem; } .rank-2 { font-weight: bold; color: #a9a9a9; } .rank-3 { font-weight: bold; color: #cd7f32; }
 .rank-last { color: var(--danger-color); font-weight: bold; }
 .podium-divider td { border-bottom: 3px solid rgba(230, 57, 70, 0.15) !important; }
@@ -72,10 +53,17 @@ tr:last-child td { border-bottom: none; }
 .view { display: none; } .view.active-view { display: block; animation: fadeIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
-/* NAVBAR INFERIORE */
+/* STILI TORNEI */
+.tour-match-box { border: 1px solid var(--border-color); background: var(--card-bg); border-radius: 12px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);}
+.tour-match-box h4 { font-size: 0.9rem; color: var(--secondary-color); margin-bottom: 10px; text-transform: uppercase;}
+.tour-match-box .player-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.tour-match-box .player-name { font-weight: bold; flex: 1; }
+.tour-match-box input { width: 60px; text-align: center; padding: 8px; }
+
+/* NAVBAR INFERIORE (Aggiornata per 4 bottoni) */
 .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--nav-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); display: flex; box-shadow: 0 -4px 20px rgba(0,0,0,0.05); z-index: 100; padding-bottom: env(safe-area-inset-bottom); border-radius: 25px 25px 0 0; border-top: 1px solid var(--border-color);}
-.nav-btn { flex: 1; background: transparent; color: #888; padding: 12px 5px; font-size: 1.4rem; border:none; border-radius: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; transition: color 0.3s, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: none;}
-.nav-btn span { font-size: 0.75rem; font-weight: 700; } 
+.nav-btn { flex: 1; background: transparent; color: #888; padding: 12px 2px; font-size: 1.3rem; border:none; border-radius: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; transition: color 0.3s, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: none;}
+.nav-btn span { font-size: 0.65rem; font-weight: 700; } 
 .nav-btn.active { color: var(--primary-color); transform: translateY(-4px); } 
 .nav-btn:active { transform: scale(0.9) translateY(2px); } 
 #ai-comment { font-style: italic; color: var(--text-color); line-height: 1.6; padding: 16px; border-left: 4px solid var(--secondary-color); background: var(--input-bg); border-radius: 0 12px 12px 0; }

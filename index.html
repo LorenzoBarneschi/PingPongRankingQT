@@ -4,33 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ping Pong Ranking QT</title>
-    
-    <!-- Icona per iOS e PWA -->
     <link rel="apple-touch-icon" href="icon.png">
     <link rel="icon" type="image/png" href="icon.png">
     <link rel="manifest" href="manifest.json">
-    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Righteous&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+    <div class="main-top-banner">
+        <h1>Ping Pong QT</h1>
+    </div>
 
     <main>
         <!-- VISTA 1: ARENA -->
         <div id="view-arena" class="view active-view">
-            
-            <!-- Banner Principale Compatto e Arrotondato -->
-            <div class="main-title-card">
-                <h1>Ping Pong QT</h1>
-            </div>
-
-            <!-- Titolo di Sezione (Identico a Storico e Stats) -->
             <div class="view-header">
                 <h2>🏓 L'Arena</h2>
                 <p class="subtitle">La Battaglia in Diretta</p>
             </div>
-
             <section class="card">
                 <h2>🏆 Classifica Live</h2>
                 <div class="table-container">
@@ -40,7 +32,6 @@
                     </table>
                 </div>
             </section>
-
             <section class="card">
                 <h2>⚔️ Nuova Partita</h2>
                 <form id="match-form">
@@ -52,7 +43,6 @@
                         <div><label>Punti Vinc.</label><input type="number" id="score-winner" min="0" required></div>
                         <div><label>Punti Sconf.</label><input type="number" id="score-loser" min="0" required></div>
                     </div>
-                    
                     <div>
                         <label>Data e Ora Partita</label>
                         <div style="display: flex; gap: 10px;">
@@ -60,32 +50,26 @@
                             <button type="button" id="btn-now" class="btn-secondary" style="width: auto; padding: 0 15px;">Adesso</button>
                         </div>
                     </div>
-
                     <div>
-                        <label>Formato / Contesto</label>
+                        <label>Formato</label>
                         <select id="format" required>
                             <option value="11">Singola a 11 pt</option>
                             <option value="21">Singola a 21 pt</option>
                             <option value="bo3_11">Bo3 (a 11 pt)</option>
                             <option value="bo3_21">Bo3 (a 21 pt)</option>
-                            <option value="tournament_match">🏆 Scontro di Torneo (Rating x1.5)</option>
-                            <option value="tournament_final">👑 FINALE di Torneo (Rating x2.0)</option>
                             <option value="custom">⚙️ Personalizzata</option>
                         </select>
                     </div>
-
                     <div id="custom-format-details" style="display: none; background: var(--input-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
                         <div style="display: flex; gap: 10px;">
                             <div><label>Set Totali (Es. 5)</label><input type="number" id="custom-sets" min="1" value="1"></div>
                             <div><label>Punti a Set</label><input type="number" id="custom-points" min="1" value="11"></div>
                         </div>
                     </div>
-
                     <div><label>Note (Opzionale)</label><input type="text" id="match-notes" placeholder="Es. Vento forte..."></div>
                     <button type="submit" id="save-match-btn">Salva Risultato</button>
                 </form>
             </section>
-            
             <section class="card">
                 <h2>⚙️ Gestione Giocatori</h2>
                 <form id="player-form" style="margin-bottom: 15px;">
@@ -101,70 +85,84 @@
 
         <!-- VISTA 2: STORICO -->
         <div id="view-history" class="view">
-            <div class="view-header">
-                <h2>📜 Lo Storico</h2>
-                <p class="subtitle">Tutte le battaglie registrate</p>
-            </div>
-            <section class="card">
-                <div id="history-list"><p>Caricamento storico...</p></div>
-            </section>
+            <div class="view-header"><h2>📜 Lo Storico</h2><p class="subtitle">Tutte le battaglie registrate</p></div>
+            <section class="card"><div id="history-list"><p>Caricamento storico...</p></div></section>
         </div>
 
-        <!-- VISTA 3: STATISTICHE E H2H -->
+        <!-- VISTA 3: STATISTICHE -->
         <div id="view-stats" class="view">
-            <div class="view-header">
-                <h2>📊 Le Statistiche</h2>
-                <p class="subtitle">L'Oracolo e i Numeri</p>
-            </div>
-            
-            <!-- Mensile -->
+            <div class="view-header"><h2>📊 Statistiche</h2><p class="subtitle">L'Oracolo e i Numeri</p></div>
             <section class="card">
                 <h2>📅 Giocatore del Mese</h2>
                 <select id="month-select" style="margin-bottom: 15px;"><option value="">Caricamento mesi...</option></select>
                 <div id="monthly-leaderboard"><p style="text-align:center; color: #888;">Seleziona un mese.</p></div>
             </section>
-
-            <!-- H2H -->
             <section class="card">
                 <h2>⚔️ Testa a Testa</h2>
                 <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <select id="h2h-p1"><option value="">Giocatore 1</option></select>
-                    <span style="align-self: center; font-weight: bold; color: var(--secondary-color);">VS</span>
-                    <select id="h2h-p2"><option value="">Giocatore 2</option></select>
+                    <select id="h2h-p1"><option value="">Giocatore 1</option></select><span style="align-self: center; font-weight: bold; color: var(--secondary-color);">VS</span><select id="h2h-p2"><option value="">Giocatore 2</option></select>
                 </div>
                 <div id="h2h-result" style="text-align: center; font-size: 0.9rem; color: #666;">Seleziona due giocatori.</div>
                 <p id="h2h-narrative" style="margin-top: 15px; font-style: italic; font-size: 0.9rem; color: var(--text-color); text-align: center; border-top: 1px solid var(--border-color); padding-top: 10px; display: none;"></p>
             </section>
-
-            <!-- Profilo e Oracolo -->
             <section class="card" style="border: 2px solid var(--primary-color);">
                 <h2>🔍 L'Oracolo</h2>
                 <select id="stats-player-select" style="margin-bottom: 15px;"><option value="general">📊 Statistiche Generali (Gruppo)</option></select>
-                
                 <div id="epic-title-container" style="text-align: center; margin-bottom: 15px; display: none;">
-                    <span id="player-epic-title" style="background: linear-gradient(45deg, #d4af37, #b8860b); color: white; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; text-transform: uppercase; box-shadow: 0 4px 10px rgba(212,175,55,0.4); font-family: 'Righteous', sans-serif; letter-spacing: 1px;">Il Titolo</span>
+                    <span id="player-epic-title" style="background: linear-gradient(45deg, #d4af37, #b8860b); color: white; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; text-transform: uppercase; font-family: 'Righteous', sans-serif; letter-spacing: 1px;">Il Titolo</span>
                 </div>
                 <p id="ai-comment">Sto analizzando i dati...</p>
                 <div id="extra-stats" class="extra-stats-container"></div>
             </section>
+            <section class="card chart-wrapper" id="chart-container-line"><h2>📈 Andamento Punti</h2><div class="canvas-container"><canvas id="rankingChart"></canvas></div></section>
+            <section class="card chart-wrapper" id="chart-container-pie" style="display:none;"><h2>🎯 Win Rate</h2><div class="canvas-container" style="max-height: 250px;"><canvas id="winRateChart"></canvas></div></section>
+        </div>
 
-            <!-- Grafici -->
-            <section class="card chart-wrapper" id="chart-container-line">
-                <h2>📈 Andamento Punti</h2>
-                <div class="canvas-container"><canvas id="rankingChart"></canvas></div>
+        <!-- VISTA 4: TORNEI (LA NOVITÀ) -->
+        <div id="view-tournaments" class="view">
+            <div class="view-header"><h2>👑 I Tornei</h2><p class="subtitle">La via per la Gloria</p></div>
+            
+            <section class="card">
+                <h2>Crea Nuovo Torneo</h2>
+                <p style="font-size: 0.85rem; color: #666; margin-bottom: 15px;">Quota ingresso: <strong>0.5%</strong> dei punti. Montepremi al 1°, 2° e 3° posto.</p>
+                
+                <div id="tournament-players-checkboxes" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; background: var(--input-bg); padding: 10px; border-radius: 12px; max-height: 200px; overflow-y: auto;">
+                    <!-- I checkbox dei giocatori appariranno qui -->
+                </div>
+                
+                <button id="btn-start-tournament" class="btn-secondary" style="width: 100%;">Avvia Generatore</button>
             </section>
 
-            <section class="card chart-wrapper" id="chart-container-pie" style="display:none;">
-                <h2>🎯 Win Rate</h2>
-                <div class="canvas-container" style="max-height: 250px;"><canvas id="winRateChart"></canvas></div>
+            <!-- IL TABELLONE ATTIVO -->
+            <section id="active-tournament-section" class="card" style="display: none; border: 2px solid #d4af37;">
+                <h2 style="color: #d4af37;">🏆 Torneo in Corso</h2>
+                <div style="background: var(--input-bg); padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+                    <span style="font-size: 0.85rem; color: #888; text-transform: uppercase;">Montepremi Totale</span><br>
+                    <strong style="font-size: 1.5rem; color: #d4af37;" id="tour-pot">0</strong><span style="color: #d4af37;"> pt</span>
+                </div>
+                
+                <h3 id="tour-round-title" style="text-align: center; margin-bottom: 15px; color: var(--secondary-color);">Quarti di Finale</h3>
+                
+                <div id="tour-matches-container" style="display: flex; flex-direction: column; gap: 10px;">
+                    <!-- Le partite del turno appariranno qui -->
+                </div>
+
+                <div id="tour-podium-section" style="display: none; text-align: center; margin-top: 20px;">
+                    <h3 style="color: var(--primary-color);">Incoronazione</h3>
+                    <select id="tour-1st" style="margin-bottom:10px;"><option value="">🥇 1° Classificato (60%)</option></select>
+                    <select id="tour-2nd" style="margin-bottom:10px;"><option value="">🥈 2° Classificato (30%)</option></select>
+                    <select id="tour-3rd" style="margin-bottom:15px;"><option value="">🥉 3° Classificato (10%)</option></select>
+                    <button id="btn-finish-tournament" style="width: 100%;">Concludi e Assegna Premi</button>
+                </div>
             </section>
         </div>
     </main>
 
     <nav class="bottom-nav">
-        <button id="nav-arena" class="nav-btn active">🏓<br><span>Arena</span></button>
-        <button id="nav-history" class="nav-btn">📜<br><span>Storico</span></button>
-        <button id="nav-stats" class="nav-btn">📊<br><span>Stats</span></button>
+        <button id="nav-arena" class="nav-btn active">🏓<span>Arena</span></button>
+        <button id="nav-tournaments" class="nav-btn">👑<span>Tornei</span></button>
+        <button id="nav-history" class="nav-btn">📜<span>Storico</span></button>
+        <button id="nav-stats" class="nav-btn">📊<span>Stats</span></button>
     </nav>
 
     <script type="module" src="app.js"></script>
