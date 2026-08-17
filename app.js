@@ -8,7 +8,7 @@ const playersRef = collection(db, "players"); const matchesRef = collection(db, 
 let playersData = []; let matchesData = []; let toursData = []; let lineChart = null; let pieChart = null;
 let activeTourId = null; let activeTourData = null; let currentMatchToPlay = null;
 
-const ADMIN_PIN = "1234";
+const ADMIN_PIN = "2580";
 
 function setNow() { 
     const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); 
