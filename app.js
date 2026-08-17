@@ -35,18 +35,15 @@ document.getElementById("nav-tournaments").addEventListener("click", () => { swi
 document.getElementById("btn-admin-login").addEventListener("click", () => {
     const pin = prompt("Inserisci il PIN di sicurezza (Solo Admin):");
     if(pin === ADMIN_PIN) {
-        document.body.classList.add("admin-mode");
-        document.getElementById("btn-admin-login").style.display = "none";
+        document.body.classList.add("admin-mode"); document.getElementById("btn-admin-login").style.display = "none";
         alert("🔓 Accesso Garantito! Opzioni distruttive sbloccate.");
     } else if(pin !== null) { alert("❌ PIN errato."); }
 });
 
 async function wipeEverything() {
     const batch = writeBatch(db);
-    const mSnap = await getDocs(collection(db, "matches"));
-    const tSnap = await getDocs(collection(db, "tournaments"));
-    mSnap.forEach(d => batch.delete(d.ref));
-    tSnap.forEach(d => batch.delete(d.ref));
+    const mSnap = await getDocs(collection(db, "matches")); const tSnap = await getDocs(collection(db, "tournaments"));
+    mSnap.forEach(d => batch.delete(d.ref)); tSnap.forEach(d => batch.delete(d.ref));
     playersData.forEach(p => { batch.update(doc(db, "players", p.id), { rating: 1000, wins: 0, losses: 0 }); });
     await batch.commit(); alert("Database riportato alle condizioni di fabbrica!");
 }
@@ -79,61 +76,68 @@ document.getElementById("btn-recalculate-elo").addEventListener("click", async (
 
 function calculateMatchPoints(wData, lData, wScore, lScore, format, matchDateObj) {
     let fmtMult = 1.0; let standardWinScore = 11;
-    if(format === "21") { fmtMult = 1.2; standardWinScore = 21; }
-    else if(format === "bo3_11") { fmtMult = 1.5; }
+    if(format === "21") { fmtMult = 1.2; standardWinScore = 21; } else if(format === "bo3_11") { fmtMult = 1.5; }
     else if(format === "custom") {
         let cSets = parseInt(document.getElementById("custom-sets").value || 1); let cPts = parseInt(document.getElementById("custom-points").value || 11);
-        fmtMult = 1.0 + (cSets > 1 ? (cSets-1)*0.25 : 0) + (cPts > 11 ? (cPts-11)*0.02 : 0);
-        standardWinScore = cPts;
+        fmtMult = 1.0 + (cSets > 1 ? (cSets-1)*0.25 : 0) + (cPts > 11 ? (cPts-11)*0.02 : 0); standardWinScore = cPts;
     }
-
     let diff = wScore - lScore; let marginMult = 1.0;
-    if(diff <= 2 && wScore > standardWinScore) marginMult = 0.85; 
-    else if(diff <= 3) marginMult = 0.95; 
-    else if(diff >= 4 && diff <= 6) marginMult = 1.0; 
-    else if(diff >= 7 && diff <= 8) marginMult = 1.10; 
-    else if(diff >= 9) marginMult = 1.15; 
-
+    if(diff <= 2 && wScore > standardWinScore) marginMult = 0.85; else if(diff <= 3) marginMult = 0.95; else if(diff >= 4 && diff <= 6) marginMult = 1.0; else if(diff >= 7 && diff <= 8) marginMult = 1.10; else if(diff >= 9) marginMult = 1.15; 
     let matchesThatDay = 0; const targetDateString = matchDateObj.toDateString();
     matchesData.forEach(m => { if(m.timestamp && m.timestamp.toDate().toDateString() === targetDateString) { if((m.winner === wData.id && m.loser === lData.id) || (m.winner === lData.id && m.loser === wData.id)) matchesThatDay++; }});
-    
     const matchNumber = matchesThatDay + 1; let spamPenalty = 1.0;
-    if (matchNumber >= 6 && matchNumber <= 10) spamPenalty = 0.75;
-    else if (matchNumber >= 11 && matchNumber <= 14) spamPenalty = 0.45;
-    else if (matchNumber >= 15) spamPenalty = 0.25;
-
+    if (matchNumber >= 6 && matchNumber <= 10) spamPenalty = 0.75; else if (matchNumber >= 11 && matchNumber <= 14) spamPenalty = 0.45; else if (matchNumber >= 15) spamPenalty = 0.25;
     const expW = 1 / (1 + Math.pow(10, (lData.rating - wData.rating) / 400));
     return Math.max(1, Math.round(32 * (1 - expW) * fmtMult * marginMult * spamPenalty));
 }
 
-// CLASSIFICA E POPOLAMENTO
-onSnapshot(query(playersRef, orderBy("rating", "desc")), (snapshot) => {
+// FUNZIONE GLOBALE DI RENDER CLASSIFICA (Risolve il bug della corona)
+function renderRanking() {
+    if(playersData.length === 0) return;
     const rankingList = document.getElementById("ranking-list");
-    const selects = [document.getElementById("winner"), document.getElementById("loser"), document.getElementById("delete-player-select"), document.getElementById("stats-player-select"), document.getElementById("h2h-p1"), document.getElementById("h2h-p2"), document.getElementById("edit-player-select")];
-    rankingList.innerHTML = ""; selects.forEach(s => s.innerHTML = (s.id==='stats-player-select'?'<option value="general">📊 Statistiche Generali</option>':'<option value="">Seleziona...</option>'));
-    playersData = []; let pos = 1;
     
+    // Evita di svuotare le select se l'utente sta facendo qualcosa, aggiorniamo solo le tendine se sono vuote o diverse
+    const selects = [document.getElementById("winner"), document.getElementById("loser"), document.getElementById("delete-player-select"), document.getElementById("stats-player-select"), document.getElementById("h2h-p1"), document.getElementById("h2h-p2"), document.getElementById("edit-player-select")];
+    
+    // Controlla il campione in carica
     const finishedTours = toursData.filter(t => t.status === 'finished').sort((a,b) => b.timestamp - a.timestamp);
     const reigningChampId = finishedTours.length > 0 ? finishedTours[0].podium1 : null;
 
-    snapshot.forEach((doc) => {
-        const p = doc.data(); p.id = doc.id; playersData.push(p);
-        let rowClass = pos === 3 && snapshot.size > 3 ? "podium-divider" : "";
-        let rankClass = pos === 1 ? "rank-1" : (pos === 2 ? "rank-2" : (pos === 3 ? "rank-3" : (pos === snapshot.size && snapshot.size >= 4 ? "rank-last" : "")));
+    rankingList.innerHTML = "";
+    let pos = 1;
+    
+    // Popola tabella
+    playersData.forEach((p) => {
+        let rowClass = pos === 3 && playersData.length > 3 ? "podium-divider" : "";
+        let rankClass = pos === 1 ? "rank-1" : (pos === 2 ? "rank-2" : (pos === 3 ? "rank-3" : (pos === playersData.length && playersData.length >= 4 ? "rank-last" : "")));
         let crown = p.id === reigningChampId ? " 👑" : "";
         rankingList.innerHTML += `<tr class="${rowClass}"><td class="${rankClass}">${pos}°</td><td class="${rankClass}">${p.name}${crown}</td><td class="${rankClass}">${Math.round(p.rating)}</td><td>${p.wins} - ${p.losses}</td></tr>`;
-        selects.forEach(s => s.innerHTML += `<option value="${p.id}">${p.name}</option>`); pos++;
+        pos++;
     });
-    renderTournamentCheckboxes();
+
+    // Popola selects solo al primo caricamento o se i giocatori cambiano
+    if(document.getElementById("winner").options.length <= 1) {
+        selects.forEach(s => s.innerHTML = (s.id==='stats-player-select'?'<option value="general">📊 Statistiche Generali</option>':'<option value="">Seleziona...</option>'));
+        playersData.forEach((p) => { selects.forEach(s => s.innerHTML += `<option value="${p.id}">${p.name}</option>`); });
+    }
+    
+    if(document.getElementById('view-tournaments').classList.contains('active-view')) renderTournamentCheckboxes();
+}
+
+// SINCRONIZZAZIONE SNAPSHOTS
+onSnapshot(query(playersRef, orderBy("rating", "desc")), (snapshot) => {
+    playersData = []; snapshot.forEach((doc) => { const p = doc.data(); p.id = doc.id; playersData.push(p); });
+    renderRanking();
 });
 
-// STORICO
+onSnapshot(query(toursRef, orderBy("timestamp", "desc")), (snapshot) => {
+    toursData = []; snapshot.forEach(docSnap => { const t = docSnap.data(); t.id = docSnap.id; toursData.push(t); }); 
+    renderHistory(); checkActiveTournament(); renderRanking(); // Ridisegna la classifica per inserire la corona
+    if(playersData.length > 0 && toursData.length > 0) { const e = new Event('change'); document.getElementById("stats-player-select").dispatchEvent(e); }
+});
+
 onSnapshot(query(matchesRef, orderBy("timestamp", "desc")), (snapshot) => {
     matchesData = []; snapshot.forEach(docSnap => { const m = docSnap.data(); m.id = docSnap.id; matchesData.push(m); }); renderHistory(); updateH2H();
-});
-onSnapshot(query(toursRef, orderBy("timestamp", "desc")), (snapshot) => {
-    toursData = []; snapshot.forEach(docSnap => { const t = docSnap.data(); t.id = docSnap.id; toursData.push(t); }); renderHistory(); checkActiveTournament();
-    if(playersData.length > 0 && toursData.length > 0) { const e = new Event('change'); document.getElementById("stats-player-select").dispatchEvent(e); }
 });
 
 function renderHistory() {
@@ -201,7 +205,6 @@ document.getElementById("match-form").addEventListener("submit", async (e) => {
     const wData = playersData.find(p=>p.id===wId); const lData = playersData.find(p=>p.id===lId);
     const wScore = parseInt(document.getElementById("score-winner").value); const lScore = parseInt(document.getElementById("score-loser").value);
     const matchDateObj = new Date(document.getElementById('match-date').value);
-    
     let points = calculateMatchPoints(wData, lData, wScore, lScore, document.getElementById("format").value, matchDateObj);
     
     await updateDoc(doc(db, "players", wId), { rating: wData.rating + points, wins: wData.wins + 1 });
@@ -408,6 +411,7 @@ document.getElementById("btn-finish-tournament").addEventListener("click", async
     confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }); 
 });
 
+// H2H E MESI
 function updateH2H() {
     const p1 = document.getElementById("h2h-p1").value; const p2 = document.getElementById("h2h-p2").value;
     const resDiv = document.getElementById("h2h-result"); const narDiv = document.getElementById("h2h-narrative"); narDiv.style.display = "none";
@@ -438,10 +442,12 @@ document.getElementById("month-select").addEventListener("change", (e) => {
     if(matchCount === 0) return resDiv.innerHTML = "<p style='text-align:center; color: #888;'>Nessun movimento in questo mese.</p>";
     let resultHTML = '<div class="table-container"><table><thead><tr><th>Giocatore</th><th>Saldo Punti</th></tr></thead><tbody>';
     const sorted = Object.entries(pointsGained).sort((a,b) => b[1] - a[1]);
+    if(sorted.length === 0) resultHTML += '<tr><td colspan="2">Nessun dato.</td></tr>';
     sorted.forEach(([pId, pts], index) => { const pName = playersData.find(x=>x.id===pId)?.name || "Ignoto"; const color = pts > 0 ? 'var(--success-color)' : 'var(--danger-color)'; const sign = pts > 0 ? '+' : ''; resultHTML += `<tr><td style="font-weight: ${index === 0 ? 'bold' : 'normal'}; ${index===0 ? 'color:#d4af37;':''}">${index === 0 ? '👑 ' : ''}${pName}</td><td style="color: ${color}; font-weight: bold;">${sign}${pts}</td></tr>`; });
     resDiv.innerHTML = resultHTML + '</tbody></table></div>';
 });
 
+// ORACOLO COMPLETO E GRAFICI MIGLIORATI
 document.getElementById("stats-player-select").addEventListener("change", (e) => generateSmartComment(e.target.value));
 
 function generateSmartComment(playerId) {
@@ -480,7 +486,6 @@ function generateSmartComment(playerId) {
     const p = playersData.find(x => x.id === playerId);
     const tot = p.wins + p.losses; const wr = tot > 0 ? Math.round((p.wins / tot) * 100) : 0;
     const wonTours = toursData.filter(t => t.status === 'finished' && t.podium1 === p.id).length;
-
     document.getElementById("wr-text-display").innerText = wr + "%";
 
     const playerMatchesChronological = matchesData.filter(m => m.winner === p.id || m.loser === p.id).sort((a,b) => a.timestamp - b.timestamp);
@@ -495,52 +500,20 @@ function generateSmartComment(playerId) {
         if(m.loser === p.id && diff > worstDiff) { worstDiff = diff; worstLoss = m; }
     });
 
-    let title = "Il Novizio"; let narrative = ""; let badgeBg = "linear-gradient(45deg, #d4af37, #b8860b)"; // default gold
+    let title = "Il Novizio"; let narrative = ""; let badgeBg = "linear-gradient(45deg, #d4af37, #b8860b)";
     const isFirst = p.id === [...playersData].sort((a,b)=>b.rating-a.rating)[0].id;
     
-    if(tot < 5) { 
-        title = "L'Incognita"; narrative = pickRnd([`È da poco sceso nell'arena. Il mistero che lo avvolge lo rende imprevedibile.`, `Un talento grezzo da decifrare.`]); 
-        badgeBg = "linear-gradient(45deg, #a8a8a8, #696969)"; 
-    }
-    else if (wr < 20) { 
-        title = pickRnd(["Il Sacco da Boxe", "L'Eterno Sconfitto", "Il Disastro"]); narrative = `I numeri sono impietosi. Entra in campo solo per fare beneficenza di punti Elo.`; 
-        badgeBg = "linear-gradient(45deg, #2b2b2b, #000000)"; 
-    }
-    else if (wr <= 30) { 
-        title = pickRnd(["L'Incudine", "Il Muro di Gomma", "Il Masochista"]); narrative = `Prende colpi su colpi, ma torna sempre al tavolo. Eroe tragico di questo gruppo.`; 
-        badgeBg = "linear-gradient(45deg, #708090, #2f4f4f)"; 
-    }
-    else if (isFirst && wr > 65) { 
-        title = pickRnd(["Il Tiranno", "Il Monarca", "L'Intoccabile"]); narrative = `Siede sul trono con ferocia. Non fa prigionieri. Sfiderà mai qualcuno in grado di farlo sudare?`; 
-        badgeBg = "linear-gradient(45deg, #ffd700, #ff8c00)"; 
-    }
-    else if (isFirst && wr <= 65) { 
-        title = "Il Re Astuto"; narrative = `Primo in classifica, ma non invincibile. Mantiene il comando con l'astuzia.`; 
-    }
-    else if (!isFirst && wr >= 70) { 
-        title = pickRnd(["Il Predatore Occulto", "L'Esecutore", "Il Cecchino"]); narrative = `Guarda il suo Win Rate. Quando gioca è una condanna a morte.`; 
-        badgeBg = "linear-gradient(45deg, #8b0000, #4a0000)"; 
-    }
-    else if (currentStreak >= 5) { 
-        title = pickRnd(["L'Inarrestabile", "La Fenice", "La Cometa"]); narrative = `Totalmente "On Fire". È entrato in una bolla mistica dove ogni schiacciata entra.`; 
-        badgeBg = "linear-gradient(45deg, #ff4500, #dc143c)"; 
-    }
-    else if (currentStreak <= -5) { 
-        title = pickRnd(["L'Anima Tormentata", "Il Sopravvissuto"]); narrative = `Un tunnel buio lungo ${Math.abs(currentStreak)} sconfitte. Servono energie positive, o un esorcismo alla racchetta.`; 
-        badgeBg = "linear-gradient(45deg, #483d8b, #191970)"; 
-    }
-    else if (wr > 40 && wr < 60 && tot > 20) { 
-        title = pickRnd(["Il Caotico", "La Mina Vagante", "Il Jolly"]); narrative = `Può battere il campione o perdere coll'ultimo. L'imprevedibilità è la sua firma.`; 
-        badgeBg = "linear-gradient(45deg, #8a2be2, #4b0082)"; 
-    }
-    else if (tot > 40 && wr >= 50) { 
-        title = pickRnd(["Il Veterano", "Lo Stratega", "Il Maestro"]); narrative = `Ha visto più top-spin lui di chiunque altro. Conosce i punti deboli del gruppo.`; 
-        badgeBg = "linear-gradient(45deg, #008080, #006400)"; 
-    }
-    else { 
-        title = "La Promessa"; narrative = `Alterna sprazzi di genio a blackout dolorosi. Ha un gran potenziale inespresso.`; 
-        badgeBg = "linear-gradient(45deg, #4682b4, #00008b)"; 
-    }
+    if(tot < 5) { title = "L'Incognita"; narrative = pickRnd([`È da poco sceso nell'arena. Il mistero che lo avvolge lo rende imprevedibile.`, `Un talento grezzo da decifrare.`]); badgeBg = "linear-gradient(45deg, #a8a8a8, #696969)"; }
+    else if (wr < 20) { title = pickRnd(["Il Sacco da Boxe", "L'Eterno Sconfitto", "Il Disastro"]); narrative = `I numeri sono impietosi. Entra in campo solo per fare beneficenza di punti Elo.`; badgeBg = "linear-gradient(45deg, #2b2b2b, #000000)"; }
+    else if (wr <= 30) { title = pickRnd(["L'Incudine", "Il Muro di Gomma", "Il Masochista"]); narrative = `Prende colpi su colpi, ma torna sempre al tavolo. Eroe tragico di questo gruppo.`; badgeBg = "linear-gradient(45deg, #708090, #2f4f4f)"; }
+    else if (isFirst && wr > 65) { title = pickRnd(["Il Tiranno", "Il Monarca", "L'Intoccabile"]); narrative = `Siede sul trono con ferocia. Non fa prigionieri. Sfiderà mai qualcuno in grado di farlo sudare?`; badgeBg = "linear-gradient(45deg, #ffd700, #ff8c00)"; }
+    else if (isFirst && wr <= 65) { title = "Il Re Astuto"; narrative = `Primo in classifica, ma non invincibile. Mantiene il comando con l'astuzia.`; }
+    else if (!isFirst && wr >= 70) { title = pickRnd(["Il Predatore Occulto", "L'Esecutore", "Il Cecchino"]); narrative = `Guarda il suo Win Rate. Quando gioca è una condanna a morte.`; badgeBg = "linear-gradient(45deg, #8b0000, #4a0000)"; }
+    else if (currentStreak >= 5) { title = pickRnd(["L'Inarrestabile", "La Fenice", "La Cometa"]); narrative = `Totalmente "On Fire". È entrato in una bolla mistica dove ogni schiacciata entra.`; badgeBg = "linear-gradient(45deg, #ff4500, #dc143c)"; }
+    else if (currentStreak <= -5) { title = pickRnd(["L'Anima Tormentata", "Il Sopravvissuto"]); narrative = `Un tunnel buio lungo ${Math.abs(currentStreak)} sconfitte. Servono energie positive, o un esorcismo alla racchetta.`; badgeBg = "linear-gradient(45deg, #483d8b, #191970)"; }
+    else if (wr > 40 && wr < 60 && tot > 20) { title = pickRnd(["Il Caotico", "La Mina Vagante", "Il Jolly"]); narrative = `Può battere il campione o perdere coll'ultimo. L'imprevedibilità è la sua firma.`; badgeBg = "linear-gradient(45deg, #8a2be2, #4b0082)"; }
+    else if (tot > 40 && wr >= 50) { title = pickRnd(["Il Veterano", "Lo Stratega", "Il Maestro"]); narrative = `Ha visto più top-spin lui di chiunque altro. Conosce i punti deboli del gruppo.`; badgeBg = "linear-gradient(45deg, #008080, #006400)"; }
+    else { title = "La Promessa"; narrative = `Alterna sprazzi di genio a blackout dolorosi. Ha un gran potenziale inespresso.`; badgeBg = "linear-gradient(45deg, #4682b4, #00008b)"; }
 
     let ops = {}; playerMatchesChronological.forEach(m => { if(m.winner === playerId) { ops[m.loser] = ops[m.loser] || {w:0, l:0}; ops[m.loser].w++; } if(m.loser === playerId) { ops[m.winner] = ops[m.winner] || {w:0, l:0}; ops[m.winner].l++; } });
     let best = null, wBest = 0, worst = null, lWorst = 0;
@@ -550,10 +523,7 @@ function generateSmartComment(playerId) {
     if(worst && lWorst >= 3) narrative += pickRnd([` Il suo tallone d'Achille è ${nWorst}, una vera maledizione.`, ` Davanti a ${nWorst} va regolarmente in tilt.`]);
     else if(best && wBest >= 3) narrative += pickRnd([` Ha trovato nel povero ${nBest} il suo bancomat personale.`, ` Contro ${nBest} si sente onnipotente.`]);
 
-    epicBadgeBox.style.display = "block"; 
-    epicTitleSpan.innerText = title; 
-    epicTitleSpan.style.background = badgeBg;
-    commentBox.innerText = `🎙️ "${narrative}"`;
+    epicBadgeBox.style.display = "block"; epicTitleSpan.innerText = title; epicTitleSpan.style.background = badgeBg; commentBox.innerText = `🎙️ "${narrative}"`;
     extraBox.innerHTML = `<div class="stat-box"><span>Tornei Vinti</span><strong>🏆 ${wonTours}</strong></div><div class="stat-box"><span>Win Streak</span><strong>${streakBadge}</strong></div><div class="stat-box"><span>Vittima Preferita</span><strong>${nBest}</strong></div><div class="stat-box"><span>Bestia Nera</span><strong>${nWorst}</strong></div>`;
     
     extStatsBox.innerHTML = "";
@@ -569,24 +539,25 @@ function drawRealCharts(type, p) {
     const ctx = document.getElementById('rankingChart').getContext('2d'); Chart.defaults.color = getComputedStyle(document.body).getPropertyValue('--text-color').trim(); Chart.defaults.font.family = 'Inter, sans-serif';
     
     if(type === "general") { 
-        // BAR CHART PER LA CLASSIFICA GENERALE!
         const sortedData = [...playersData].sort((a,b) => b.rating - a.rating);
         const labels = sortedData.map(pl => pl.name);
         const dataPts = sortedData.map(pl => Math.round(pl.rating));
+        
+        // CALCOLO DINAMICO ASSE Y (Trova il minimo e abbassa di 30 punti per far vedere la barra)
+        const minRating = Math.min(...dataPts);
+        const yMin = Math.max(0, minRating - 30);
+
         lineChart = new Chart(ctx, { 
             type: 'bar', 
-            data: { 
-                labels: labels, 
-                datasets: [{ 
-                    label: 'Punteggio Elo Attuale', 
-                    data: dataPts, 
-                    backgroundColor: 'rgba(230, 57, 70, 0.7)',
-                    borderColor: '#e63946',
-                    borderWidth: 1,
-                    borderRadius: 5
-                }] 
-            }, 
-            options: { maintainAspectRatio: false, scales: { y: { beginAtZero: false, min: 900 } } } 
+            data: { labels: labels, datasets: [{ label: 'Punteggio Elo Attuale', data: dataPts, backgroundColor: 'rgba(230, 57, 70, 0.7)', borderColor: '#e63946', borderWidth: 1, borderRadius: 5 }] }, 
+            options: { 
+                maintainAspectRatio: false, 
+                scales: { 
+                    y: { beginAtZero: false, min: yMin },
+                    x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 45, font: { size: 11 } } }
+                },
+                plugins: { legend: { display: false } }
+            } 
         }); 
     } else {
         const pm = matchesData.filter(m => m.winner === p.id || m.loser === p.id).reverse(); let lbs = ['Inizio'], dts = [1000];
