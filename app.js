@@ -8,7 +8,7 @@ const playersRef = collection(db, "players"); const matchesRef = collection(db, 
 let playersData = []; let matchesData = []; let toursData = []; let lineChart = null; let pieChart = null;
 let activeTourId = null; let activeTourData = null; let currentMatchToPlay = null;
 
-const ADMIN_PIN = "2580";
+const ADMIN_PIN = "1234";
 
 function setNow() { 
     const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); 
@@ -99,8 +99,7 @@ function renderRanking() {
     const finishedTours = toursData.filter(t => t.status === 'finished').sort((a,b) => b.timestamp - a.timestamp);
     const reigningChampId = finishedTours.length > 0 ? finishedTours[0].podium1 : null;
 
-    rankingList.innerHTML = "";
-    let pos = 1;
+    rankingList.innerHTML = ""; let pos = 1;
     
     playersData.forEach((p) => {
         let rowClass = pos === 3 && playersData.length > 3 ? "podium-divider" : "";
@@ -119,8 +118,7 @@ function renderRanking() {
 }
 
 onSnapshot(query(playersRef, orderBy("rating", "desc")), (snapshot) => {
-    playersData = []; snapshot.forEach((doc) => { const p = doc.data(); p.id = doc.id; playersData.push(p); });
-    renderRanking();
+    playersData = []; snapshot.forEach((doc) => { const p = doc.data(); p.id = doc.id; playersData.push(p); }); renderRanking();
 });
 
 onSnapshot(query(toursRef, orderBy("timestamp", "desc")), (snapshot) => {
@@ -190,6 +188,7 @@ document.getElementById("edit-player-form").addEventListener("submit", async (e)
     if(id && newName) { await updateDoc(doc(db, "players", id), { name: newName }); document.getElementById("edit-player-form").reset(); alert("Nome/Emoji aggiornati!"); }
 });
 
+// SALVA PARTITA (Arena)
 document.getElementById("match-form").addEventListener("submit", async (e) => {
     e.preventDefault(); const wId = document.getElementById("winner").value; const lId = document.getElementById("loser").value;
     if (wId === lId) return alert("Giocatori diversi!"); document.getElementById("save-match-btn").disabled = true;
@@ -205,6 +204,7 @@ document.getElementById("match-form").addEventListener("submit", async (e) => {
     document.getElementById("match-form").reset(); setNow(); document.getElementById("save-match-btn").disabled = false;
 });
 
+// --- MOTORE TORNEI E TABELLONE ---
 function renderTournamentCheckboxes() {
     const container = document.getElementById("tournament-players-checkboxes"); if(!container) return; container.innerHTML = "";
     playersData.forEach(p => { container.innerHTML += `<label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text-color);"><input type="checkbox" value="${p.id}" class="tour-cb" style="width: 20px; height: 20px; margin: 0; flex-shrink: 0;"> <span style="flex:1;">${p.name} (${Math.round(p.rating)} pt)</span></label>`; });
@@ -525,57 +525,42 @@ function generateSmartComment(playerId) {
 
 function drawRealCharts(type, p) {
     if(lineChart) lineChart.destroy(); if(pieChart) pieChart.destroy();
-    const ctx = document.getElementById('rankingChart').getContext('2d'); Chart.defaults.color = getComputedStyle(document.body).getPropertyValue('--text-color').trim(); Chart.defaults.font.family = 'Inter, sans-serif';
+    const container = document.querySelector('#chart-container-line .canvas-container');
     
     if(type === "general") { 
+        // GRAFICO HTML/CSS NATIVO (Zero clipping garantito al 100%)
         const sortedData = [...playersData].sort((a,b) => b.rating - a.rating);
-        const labels = sortedData.map(pl => pl.name);
-        const dataPts = sortedData.map(pl => Math.round(pl.rating));
-        
-        const minRating = Math.min(...dataPts);
-        const yMin = Math.max(0, minRating - 30);
+        if(sortedData.length === 0) return;
+        const maxScore = sortedData[0].rating;
+        const minScore = sortedData[sortedData.length - 1].rating;
+        const baseScore = Math.max(0, minScore - 40); 
+        const range = Math.max(1, maxScore - baseScore);
 
-        // IL GRADIENTE ORA È ORIZZONTALE
-        const gradient = ctx.createLinearGradient(0, 0, ctx.canvas.width || 400, 0);
-        gradient.addColorStop(0, 'rgba(230, 57, 70, 0.4)');
-        gradient.addColorStop(1, 'rgba(230, 57, 70, 0.9)');
-
-        lineChart = new Chart(ctx, { 
-            type: 'bar', 
-            data: { 
-                labels: labels, 
-                datasets: [{ 
-                    label: 'Punteggio Elo', 
-                    data: dataPts, 
-                    backgroundColor: gradient, 
-                    borderColor: '#e63946', 
-                    borderWidth: 1, 
-                    borderRadius: 6 
-                }] 
-            }, 
-            options: { 
-                indexAxis: 'y', // QUESTA È LA MAGIA: GRAFICO ORIZZONTALE!
-                maintainAspectRatio: false, 
-                layout: { padding: { right: 20 } }, 
-                scales: { 
-                    x: { 
-                        beginAtZero: false, 
-                        min: yMin, 
-                        grid: { color: 'rgba(0,0,0,0.05)' },
-                        ticks: { font: { family: 'Inter', size: 11 } } 
-                    },
-                    y: { 
-                        grid: { display: false },
-                        ticks: { 
-                            autoSkip: false, 
-                            font: { family: 'Inter', size: 12, weight: '600' } 
-                        } 
-                    }
-                },
-                plugins: { legend: { display: false } }
-            } 
-        }); 
+        let htmlChart = `<div style="display:flex; flex-direction:column; gap:15px; padding:10px 0;">`;
+        sortedData.forEach(pl => {
+            let widthPct = Math.max(8, ((pl.rating - baseScore) / range) * 100);
+            htmlChart += `
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div style="width: 85px; text-align: right; font-weight: 700; font-size: 0.85rem; color: var(--text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    ${pl.name}
+                </div>
+                <div style="flex: 1; background: var(--input-bg); border-radius: 8px; height: 28px; position: relative;">
+                    <div style="width: ${widthPct}%; background: linear-gradient(90deg, var(--primary-color), var(--primary-dark)); height: 100%; border-radius: 8px; display: flex; align-items: center; justify-content: flex-end; padding-right: 10px; box-shadow: 0 2px 5px rgba(230,57,70,0.3);">
+                        <span style="color: white; font-weight: 700; font-size: 0.8rem; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">${Math.round(pl.rating)}</span>
+                    </div>
+                </div>
+            </div>`;
+        });
+        htmlChart += `</div>`;
+        container.style.height = 'auto';
+        container.innerHTML = htmlChart;
     } else {
+        // Ripristina Canvas per Line Chart singolo giocatore
+        container.style.height = '300px';
+        container.innerHTML = `<canvas id="rankingChart"></canvas>`;
+        const ctx = document.getElementById('rankingChart').getContext('2d');
+        Chart.defaults.color = getComputedStyle(document.body).getPropertyValue('--text-color').trim(); Chart.defaults.font.family = 'Inter, sans-serif';
+        
         const pm = matchesData.filter(m => m.winner === p.id || m.loser === p.id).reverse(); let lbs = ['Inizio'], dts = [1000];
         pm.forEach((m, i) => { lbs.push(`M${i+1}`); dts.push(m.winner === p.id && m.winnerNewRating ? m.winnerNewRating : (m.loser === p.id && m.loserNewRating ? m.loserNewRating : dts[dts.length-1])); });
         lineChart = new Chart(ctx, { type: 'line', data: { labels: lbs, datasets: [{ label: p.name, data: dts, borderColor: '#e63946', backgroundColor: 'rgba(230, 57, 70, 0.1)', fill: true, tension: 0.2 }] }, options: { maintainAspectRatio: false, responsive: true } });
