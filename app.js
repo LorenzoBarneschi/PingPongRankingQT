@@ -500,10 +500,10 @@ function generateSmartComment(playerId) {
     else if (wr <= 30) { title = pickRnd(["L'Incudine", "Il Muro di Gomma", "Il Masochista"]); narrative = `Prende colpi su colpi, ma torna sempre al tavolo. Eroe tragico di questo gruppo.`; badgeBg = "linear-gradient(45deg, #708090, #2f4f4f)"; }
     else if (isFirst && wr > 65) { title = pickRnd(["Il Tiranno", "Il Monarca", "L'Intoccabile"]); narrative = `Siede sul trono con ferocia. Non fa prigionieri. Sfiderà mai qualcuno in grado di farlo sudare?`; badgeBg = "linear-gradient(45deg, #ffd700, #ff8c00)"; }
     else if (isFirst && wr <= 65) { title = "Il Re Astuto"; narrative = `Primo in classifica, ma non invincibile. Mantiene il comando con l'astuzia.`; }
-    else if (!isFirst && wr >= 70) { title = pickRnd(["Il Predatore Occulto", "L'Esecutore", "Il Cecchino"]); narrative = `Guarda il suo Win Rate. Quando gioca è una condanna a morte.`; badgeBg = "linear-gradient(45deg, #8b0000, #4a0000)"; }
+    else if (!isFirst && wr >= 70) { title = pickRnd(["Il Predatore Occulto", "L'Esecutore", "Il Cecchino"]); narrative = `Guarda il suo Win Rate. Quando gioca è una condanna a morte per chi sta dall'altra parte.`; badgeBg = "linear-gradient(45deg, #8b0000, #4a0000)"; }
     else if (currentStreak >= 5) { title = pickRnd(["L'Inarrestabile", "La Fenice", "La Cometa"]); narrative = `Totalmente "On Fire". È entrato in una bolla mistica dove ogni schiacciata entra.`; badgeBg = "linear-gradient(45deg, #ff4500, #dc143c)"; }
     else if (currentStreak <= -5) { title = pickRnd(["L'Anima Tormentata", "Il Sopravvissuto"]); narrative = `Un tunnel buio lungo ${Math.abs(currentStreak)} sconfitte. Servono energie positive, o un esorcismo alla racchetta.`; badgeBg = "linear-gradient(45deg, #483d8b, #191970)"; }
-    else if (wr > 40 && wr < 60 && tot > 20) { title = pickRnd(["Il Caotico", "La Mina Vagante", "Il Jolly"]); narrative = `Può battere il campione o perdere coll'ultimo. L'imprevedibilità è la sua firma.`; badgeBg = "linear-gradient(45deg, #8a2be2, #4b0082)"; }
+    else if (wr > 40 && wr < 60 && tot > 20) { title = pickRnd(["Il Caotico", "La Mina Vagante", "Il Jolly"]); narrative = `Può battere il campione o perdere con l'ultimo. L'imprevedibilità è la sua firma.`; badgeBg = "linear-gradient(45deg, #8a2be2, #4b0082)"; }
     else if (tot > 40 && wr >= 50) { title = pickRnd(["Il Veterano", "Lo Stratega", "Il Maestro"]); narrative = `Ha visto più top-spin lui di chiunque altro. Conosce i punti deboli del gruppo.`; badgeBg = "linear-gradient(45deg, #008080, #006400)"; }
     else { title = "La Promessa"; narrative = `Alterna sprazzi di genio a blackout dolorosi. Ha un gran potenziale inespresso.`; badgeBg = "linear-gradient(45deg, #4682b4, #00008b)"; }
 
@@ -539,15 +539,42 @@ function drawRealCharts(type, p) {
         const minRating = Math.min(...dataPts);
         const yMin = Math.max(0, minRating - 30);
 
+        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, 'rgba(230, 57, 70, 0.9)');
+        gradient.addColorStop(1, 'rgba(230, 57, 70, 0.3)');
+
         lineChart = new Chart(ctx, { 
             type: 'bar', 
-            data: { labels: labels, datasets: [{ label: 'Punteggio Elo', data: dataPts, backgroundColor: 'rgba(230, 57, 70, 0.7)', borderColor: '#e63946', borderWidth: 1, borderRadius: 5 }] }, 
+            data: { 
+                labels: labels, 
+                datasets: [{ 
+                    label: 'Punteggio Elo', 
+                    data: dataPts, 
+                    backgroundColor: gradient, 
+                    borderColor: '#e63946', 
+                    borderWidth: 1, 
+                    borderRadius: 6 
+                }] 
+            }, 
             options: { 
                 maintainAspectRatio: false, 
-                layout: { padding: { bottom: 25, top: 10 } },
+                layout: { padding: { bottom: 40, top: 10 } }, // PADDING AGGIUNTO PER EVITARE IL TAGLIO DEI NOMI
                 scales: { 
-                    y: { beginAtZero: false, min: yMin, ticks: { font: { family: 'Inter', size: 11 } } },
-                    x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 45, font: { family: 'Inter', size: 12, weight: '600' } } }
+                    y: { 
+                        beginAtZero: false, 
+                        min: yMin, 
+                        grid: { color: 'rgba(0,0,0,0.05)' },
+                        ticks: { font: { family: 'Inter', size: 11 } } 
+                    },
+                    x: { 
+                        grid: { display: false },
+                        ticks: { 
+                            autoSkip: false, 
+                            maxRotation: 45, 
+                            minRotation: 45, 
+                            font: { family: 'Inter', size: 12, weight: '600' } 
+                        } 
+                    }
                 },
                 plugins: { legend: { display: false } }
             } 
