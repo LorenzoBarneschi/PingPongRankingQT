@@ -94,8 +94,6 @@
                         <button id="delete-player-btn" class="btn-danger" style="flex: 1; margin: 0;">Elimina</button>
                     </div>
                 </div>
-
-                <!-- TASTI ADMIN PER MANUTENZIONE -->
                 <div class="reset-section admin-only" style="margin-top: 20px; text-align: center; border-top: 1px dashed #ccc; padding-top: 15px; display:flex; flex-direction:column; gap:10px;">
                     <button id="btn-recalculate-elo" style="background-color: var(--secondary-color); color: white; border: none; font-size: 0.85rem; padding: 12px;">🔄 RICALCOLA ELO DA ZERO</button>
                     <button id="btn-hard-reset" style="background-color: transparent; color: var(--danger-color); border: 1px solid var(--danger-color); font-size: 0.8rem; padding: 10px; box-shadow:none;">⚠️ AZZERA TUTTO (PUNTI E STORICO)</button>
@@ -135,14 +133,24 @@
                 <select id="stats-player-select" style="margin-bottom: 15px;"><option value="general">📊 Statistiche Generali (Gruppo)</option></select>
                 
                 <div id="epic-title-container" style="text-align: center; margin-bottom: 15px; display: none;">
-                    <span id="player-epic-title" style="background: linear-gradient(45deg, #d4af37, #b8860b); color: white; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; text-transform: uppercase; font-family: 'Righteous', sans-serif; letter-spacing: 1px;">Il Titolo</span>
+                    <span id="player-epic-title" style="color: white; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; text-transform: uppercase; box-shadow: 0 4px 10px rgba(0,0,0,0.2); font-family: 'Righteous', sans-serif; letter-spacing: 1px;">Il Titolo</span>
                 </div>
                 <p id="ai-comment">Sto analizzando i dati...</p>
                 <div id="extra-stats" class="extra-stats-container"></div>
                 <div id="extended-stats" style="margin-top: 15px; display: none; flex-direction: column; gap: 10px;"></div>
             </section>
-            <section class="card chart-wrapper" id="chart-container-line"><h2>📈 Andamento Punti</h2><div class="canvas-container"><canvas id="rankingChart"></canvas></div></section>
-            <section class="card chart-wrapper" id="chart-container-pie" style="display:none;"><h2>🎯 Win Rate</h2><div class="canvas-container" style="max-height: 250px;"><canvas id="winRateChart"></canvas></div></section>
+            
+            <section class="card chart-wrapper" id="chart-container-line">
+                <h2 id="chart-title-line">📈 Andamento Punti</h2>
+                <div class="canvas-container"><canvas id="rankingChart"></canvas></div>
+            </section>
+            
+            <section class="card chart-wrapper" id="chart-container-pie" style="display:none;">
+                <h2>🎯 Win Rate</h2>
+                <!-- IL NUMERO DELLA PERCENTUALE QUI -->
+                <div id="wr-text-display" style="text-align:center; font-size: 1.8rem; font-weight: 800; color: var(--primary-color); margin-bottom: 5px; font-family: 'Righteous', cursive;"></div>
+                <div class="canvas-container" style="max-height: 250px;"><canvas id="winRateChart"></canvas></div>
+            </section>
         </div>
 
         <!-- VISTA 4: TORNEI -->

@@ -8,7 +8,6 @@ const playersRef = collection(db, "players"); const matchesRef = collection(db, 
 let playersData = []; let matchesData = []; let toursData = []; let lineChart = null; let pieChart = null;
 let activeTourId = null; let activeTourData = null; let currentMatchToPlay = null;
 
-// LORENZO, QUESTO È IL TUO PIN. NON SCORDARLO!
 const ADMIN_PIN = "2580";
 
 function setNow() { 
@@ -33,7 +32,6 @@ document.getElementById("nav-history").addEventListener("click", () => switchTab
 document.getElementById("nav-stats").addEventListener("click", () => { switchTab('stats'); generateSmartComment(document.getElementById("stats-player-select").value); populateMonths(); });
 document.getElementById("nav-tournaments").addEventListener("click", () => { switchTab('tournaments'); checkActiveTournament(); });
 
-// GESTIONE ADMIN (LUCCHETTO)
 document.getElementById("btn-admin-login").addEventListener("click", () => {
     const pin = prompt("Inserisci il PIN di sicurezza (Solo Admin):");
     if(pin === ADMIN_PIN) {
@@ -43,7 +41,6 @@ document.getElementById("btn-admin-login").addEventListener("click", () => {
     } else if(pin !== null) { alert("❌ PIN errato."); }
 });
 
-// SUPER-RESET DATABASE (CANCELLA TUTTO E RIMETTE A 1000)
 async function wipeEverything() {
     const batch = writeBatch(db);
     const mSnap = await getDocs(collection(db, "matches"));
@@ -54,54 +51,32 @@ async function wipeEverything() {
     await batch.commit(); alert("Database riportato alle condizioni di fabbrica!");
 }
 
-document.getElementById("btn-hard-reset").addEventListener("click", async () => {
-    if(confirm("ATTENZIONE! Vuoi davvero CANCELLARE TUTTO lo storico e resettare l'app a 0?")) {
-        if(confirm("Ultimo avviso! Questa operazione pialla tutto.")) { await wipeEverything(); }
-    }
-});
-document.getElementById("btn-clear-history").addEventListener("click", async () => {
-    if(confirm("Svuotare lo storico significa cancellare le partite e riportare i punti a 1000. Procedere?")) { await wipeEverything(); }
-});
+document.getElementById("btn-hard-reset").addEventListener("click", async () => { if(confirm("CANCELLARE TUTTO lo storico?")) { if(confirm("Ultimo avviso!")) { await wipeEverything(); } } });
+document.getElementById("btn-clear-history").addEventListener("click", async () => { if(confirm("Svuotare lo storico?")) { await wipeEverything(); } });
 
-// RICALCOLO ELO COMPLETO (La Macchina del Tempo)
 document.getElementById("btn-recalculate-elo").addEventListener("click", async () => {
-    if(!confirm("Ricalcolare l'Elo di tutte le partite cronologicamente? Usa questo se hai cancellato partite vecchie e vuoi riaggiustare la catena matematica.")) return;
-    
-    // Attenzione: Ricalcolare con i Tornei di mezzo è rischiosissimo perché cambierebbe i Montepremi.
-    // L'app ti consiglia di non usarlo se ci sono tornei attivi o fitti.
-    if(toursData.length > 0) {
-        alert("Impossibile fare il ricalcolo automatico globale perché ci sono Tornei registrati. (I tornei hanno quote d'ingresso basate sui punti esatti in quel preciso momento, se cambiamo il passato si corrompe l'economia del torneo!).\n\nTi consiglio di usare l'eliminazione standard delle partite.");
-        return;
-    }
-
+    if(!confirm("Ricalcolare l'Elo cronologicamente?")) return;
+    if(toursData.length > 0) { alert("Attenzione: Ci sono Tornei registrati. Ricalcolare l'Elo di base sfalsa le quote d'ingresso pagate.\nSi consiglia di non ricalcolare globalmente se si usano i tornei."); return; }
     try {
-        const batch = writeBatch(db);
-        let simPlayers = {};
-        playersData.forEach(p => { simPlayers[p.id] = { rating: 1000, wins: 0, losses: 0 }; });
-
+        const batch = writeBatch(db); let simP = {}; playersData.forEach(p => { simP[p.id] = { rating: 1000, wins: 0, losses: 0 }; });
         const allM = [...matchesData].sort((a,b) => a.timestamp - b.timestamp);
-        
         allM.forEach(m => {
-            const w = simPlayers[m.winner]; const l = simPlayers[m.loser];
+            const w = simP[m.winner]; const l = simP[m.loser];
             if(w && l) {
-                let points = calculateMatchPointsForSimulation(w, l, m.winnerScore, m.loserScore, m.format);
-                w.rating += points; w.wins++;
-                l.rating -= points; l.losses++;
-                batch.update(doc(db, "matches", m.id), { pointsExchanged: points, winnerNewRating: w.rating, loserNewRating: l.rating });
+                let fmtMult = m.format === "21" ? 1.2 : (m.format === "bo3_11" ? 1.5 : 1.0);
+                let diff = m.winnerScore - m.loserScore; let marginMult = 1.0;
+                if(diff <= 2 && m.winnerScore > 11) marginMult = 0.85; else if(diff <= 3) marginMult = 0.95; else if(diff >= 7 && diff <= 8) marginMult = 1.10; else if(diff >= 9) marginMult = 1.15;
+                const expW = 1 / (1 + Math.pow(10, (l.rating - w.rating) / 400));
+                let pts = Math.max(1, Math.round(32 * (1 - expW) * fmtMult * marginMult));
+                w.rating += pts; w.wins++; l.rating -= pts; l.losses++;
+                batch.update(doc(db, "matches", m.id), { pointsExchanged: pts, winnerNewRating: w.rating, loserNewRating: l.rating });
             }
         });
-
-        playersData.forEach(p => {
-            if(simPlayers[p.id]) {
-                batch.update(doc(db, "players", p.id), { rating: simPlayers[p.id].rating, wins: simPlayers[p.id].wins, losses: simPlayers[p.id].losses });
-            }
-        });
-        await batch.commit(); alert("Catena Elo ricalcolata e sistemata cronologicamente!");
-    } catch(e) { console.error(e); alert("Errore nel ricalcolo."); }
+        playersData.forEach(p => { if(simP[p.id]) { batch.update(doc(db, "players", p.id), { rating: simP[p.id].rating, wins: simP[p.id].wins, losses: simP[p.id].losses }); } });
+        await batch.commit(); alert("Catena Elo ricalcolata!");
+    } catch(e) { console.error(e); }
 });
 
-
-// LA NUOVA MATEMATICA ELO (Con Scarti e Vantaggi)
 function calculateMatchPoints(wData, lData, wScore, lScore, format, matchDateObj) {
     let fmtMult = 1.0; let standardWinScore = 11;
     if(format === "21") { fmtMult = 1.2; standardWinScore = 21; }
@@ -113,12 +88,11 @@ function calculateMatchPoints(wData, lData, wScore, lScore, format, matchDateObj
     }
 
     let diff = wScore - lScore; let marginMult = 1.0;
-    
-    if(diff <= 2 && wScore > standardWinScore) marginMult = 0.85; // Vantaggi estremi
-    else if(diff <= 3) marginMult = 0.95; // Misura
-    else if(diff >= 4 && diff <= 6) marginMult = 1.0; // Normale
-    else if(diff >= 7 && diff <= 8) marginMult = 1.10; // Netta
-    else if(diff >= 9) marginMult = 1.15; // Cappotto
+    if(diff <= 2 && wScore > standardWinScore) marginMult = 0.85; 
+    else if(diff <= 3) marginMult = 0.95; 
+    else if(diff >= 4 && diff <= 6) marginMult = 1.0; 
+    else if(diff >= 7 && diff <= 8) marginMult = 1.10; 
+    else if(diff >= 9) marginMult = 1.15; 
 
     let matchesThatDay = 0; const targetDateString = matchDateObj.toDateString();
     matchesData.forEach(m => { if(m.timestamp && m.timestamp.toDate().toDateString() === targetDateString) { if((m.winner === wData.id && m.loser === lData.id) || (m.winner === lData.id && m.loser === wData.id)) matchesThatDay++; }});
@@ -129,20 +103,7 @@ function calculateMatchPoints(wData, lData, wScore, lScore, format, matchDateObj
     else if (matchNumber >= 15) spamPenalty = 0.25;
 
     const expW = 1 / (1 + Math.pow(10, (lData.rating - wData.rating) / 400));
-    let finalPoints = Math.max(1, Math.round(32 * (1 - expW) * fmtMult * marginMult * spamPenalty));
-    return finalPoints;
-}
-
-// Stessa funzione ma semplificata per il simulatore (non conta lo spam giornaliero per non appesantire)
-function calculateMatchPointsForSimulation(wData, lData, wScore, lScore, format) {
-    let fmtMult = 1.0; let standardWinScore = 11;
-    if(format === "21") { fmtMult = 1.2; standardWinScore = 21; } else if(format === "bo3_11") { fmtMult = 1.5; }
-    let diff = wScore - lScore; let marginMult = 1.0;
-    if(diff <= 2 && wScore > standardWinScore) marginMult = 0.85; 
-    else if(diff <= 3) marginMult = 0.95; else if(diff >= 4 && diff <= 6) marginMult = 1.0; 
-    else if(diff >= 7 && diff <= 8) marginMult = 1.10; else if(diff >= 9) marginMult = 1.15; 
-    const expW = 1 / (1 + Math.pow(10, (lData.rating - wData.rating) / 400));
-    return Math.max(1, Math.round(32 * (1 - expW) * fmtMult * marginMult));
+    return Math.max(1, Math.round(32 * (1 - expW) * fmtMult * marginMult * spamPenalty));
 }
 
 // CLASSIFICA E POPOLAMENTO
@@ -152,7 +113,6 @@ onSnapshot(query(playersRef, orderBy("rating", "desc")), (snapshot) => {
     rankingList.innerHTML = ""; selects.forEach(s => s.innerHTML = (s.id==='stats-player-select'?'<option value="general">📊 Statistiche Generali</option>':'<option value="">Seleziona...</option>'));
     playersData = []; let pos = 1;
     
-    // Trova campione in carica
     const finishedTours = toursData.filter(t => t.status === 'finished').sort((a,b) => b.timestamp - a.timestamp);
     const reigningChampId = finishedTours.length > 0 ? finishedTours[0].podium1 : null;
 
@@ -195,9 +155,8 @@ function renderHistory() {
     });
 }
 
-// CANCELLAZIONI INVERSE
 window.deleteMatch = async (matchId, wId, lId, pts) => {
-    if(!confirm("Annullare partita? I punti (seppur imprecisi sulla catena temporale) verranno sottratti ai giocatori in modo inverso.")) return;
+    if(!confirm("Annullare partita? I punti torneranno come prima.")) return;
     const w = await getDoc(doc(db, "players", wId)); const l = await getDoc(doc(db, "players", lId));
     if (w.exists()) await updateDoc(doc(db, "players", wId), { rating: w.data().rating - pts, wins: Math.max(0, w.data().wins - 1) });
     if (l.exists()) await updateDoc(doc(db, "players", lId), { rating: l.data().rating + pts, losses: Math.max(0, l.data().losses - 1) });
@@ -207,18 +166,13 @@ window.deleteMatch = async (matchId, wId, lId, pts) => {
 window.deleteTournament = async (tourId) => {
     if(!confirm("⚠️ ATTENZIONE: Annullando il torneo rimborserai il Buy-in, toglierai i premi dal Podio e INVERTIRAI L'ELO DI TUTTE LE PARTITE giocate al suo interno! Sei sicuro?")) return;
     const t = toursData.find(x => x.id === tourId); if(!t) return;
-    
     try {
         const pSnap = await getDocs(query(playersRef)); let localP = {}; pSnap.forEach(d => { localP[d.id] = d.data(); });
-        
         if(t.podium1 && localP[t.podium1]) localP[t.podium1].rating -= t.prizes.p1;
         if(t.podium2 && localP[t.podium2]) localP[t.podium2].rating -= t.prizes.p2;
         if(t.podium3 && localP[t.podium3]) localP[t.podium3].rating -= t.prizes.p3;
-        
         t.players.forEach(pid => { if(localP[pid] && t.entryFeeMap[pid]) localP[pid].rating += t.entryFeeMap[pid]; });
-
         const batch = writeBatch(db); const mSnap = await getDocs(query(matchesRef));
-        
         mSnap.forEach(docSnap => {
             const m = docSnap.data();
             if(m.tournamentId === tourId) {
@@ -227,13 +181,11 @@ window.deleteTournament = async (tourId) => {
                 batch.delete(docSnap.ref); 
             }
         });
-
         t.players.forEach(pid => { if(localP[pid]) { batch.update(doc(db, "players", pid), { rating: localP[pid].rating, wins: localP[pid].wins, losses: localP[pid].losses }); } });
         batch.delete(doc(db, "tournaments", tourId)); await batch.commit(); alert("Torneo annullato in sicurezza.");
     } catch(e) { console.error(e); alert("Errore durante l'annullamento."); }
 };
 
-// GIOCTORI
 document.getElementById("player-form").addEventListener("submit", async (e) => { e.preventDefault(); const n = document.getElementById("new-player-name").value.trim(); if (n) { await setDoc(doc(playersRef, n.toLowerCase().replace(/\s+/g, '_')), { name: n, rating: 1000, wins: 0, losses: 0 }); document.getElementById("new-player-name").value = ""; }});
 document.getElementById("delete-player-btn").addEventListener("click", async () => { const id = document.getElementById("delete-player-select").value; if(id && confirm("Sicuro?")) await deleteDoc(doc(playersRef, id)); });
 document.getElementById("edit-player-form").addEventListener("submit", async (e) => {
@@ -268,8 +220,7 @@ function checkActiveTournament() {
     activeTourData = toursData.find(t => t.status === 'active');
     if(activeTourData) {
         activeTourId = activeTourData.id;
-        document.getElementById("tour-setup-section").style.display = "none";
-        document.getElementById("active-tournament-section").style.display = "block";
+        document.getElementById("tour-setup-section").style.display = "none"; document.getElementById("active-tournament-section").style.display = "block";
         document.getElementById("tour-pot").innerText = activeTourData.pot;
         
         if(activeTourData.mode === 'auto') {
@@ -279,7 +230,6 @@ function checkActiveTournament() {
             document.getElementById("tour-auto-ui").style.display = "none"; document.getElementById("tour-manual-ui").style.display = "block"; document.getElementById("tour-completion-zone").style.display = "block"; document.getElementById("manual-podium-selects").style.display = "block";
             const selects = [document.getElementById("tour-winner"), document.getElementById("tour-loser"), document.getElementById("tour-1st"), document.getElementById("tour-2nd"), document.getElementById("tour-3rd")];
             selects.forEach(s => { s.innerHTML = s.innerHTML.split('</option>')[0] + '</option>'; activeTourData.players.forEach(pid => { const name = playersData.find(x=>x.id===pid)?.name; if(name) s.innerHTML += `<option value="${pid}">${name}</option>`; }); });
-            
             const mList = document.getElementById("manual-matches-list"); mList.innerHTML = "";
             const tMatches = matchesData.filter(m => m.tournamentId === activeTourData.id);
             if(tMatches.length === 0) mList.innerHTML = "Nessuna partita registrata.";
@@ -297,7 +247,6 @@ document.getElementById("btn-start-tournament").addEventListener("click", async 
     
     let pot = 0; let feeMap = {};
     for(let pid of checked) { const pData = playersData.find(x => x.id === pid); let fee = Math.max(1, Math.round(pData.rating * 0.005)); pot += fee; feeMap[pid] = fee; await updateDoc(doc(db, "players", pid), { rating: pData.rating - fee }); }
-    
     const mode = document.getElementById("tour-mode").value; let bracket = []; if(mode === 'auto') bracket = generateBracketData(checked);
     await addDoc(toursRef, { status: 'active', mode: mode, players: checked, pot: pot, entryFeeMap: feeMap, bracket: bracket, timestamp: Timestamp.fromDate(new Date(document.getElementById('tour-date').value)) });
 });
@@ -484,11 +433,11 @@ function populateMonths() {
 }
 document.getElementById("month-select").addEventListener("change", (e) => {
     const resDiv = document.getElementById("monthly-leaderboard"); if(!e.target.value) return resDiv.innerHTML = "<p style='text-align:center; color: #888;'>Seleziona un mese.</p>";
-    const [year, month] = e.target.value.split('-'); let pointsGained = {};
-    matchesData.forEach(m => { if(m.timestamp) { const d = m.timestamp.toDate(); if(d.getFullYear() == year && d.getMonth() + 1 == month) { pointsGained[m.winner] = (pointsGained[m.winner] || 0) + m.pointsExchanged; pointsGained[m.loser] = (pointsGained[m.loser] || 0) - m.pointsExchanged; } } });
+    const [year, month] = e.target.value.split('-'); let pointsGained = {}; let matchCount = 0;
+    matchesData.forEach(m => { if(m.timestamp) { const d = m.timestamp.toDate(); if(d.getFullYear() == year && d.getMonth() + 1 == month) { matchCount++; pointsGained[m.winner] = (pointsGained[m.winner] || 0) + m.pointsExchanged; pointsGained[m.loser] = (pointsGained[m.loser] || 0) - m.pointsExchanged; } } });
+    if(matchCount === 0) return resDiv.innerHTML = "<p style='text-align:center; color: #888;'>Nessun movimento in questo mese.</p>";
     let resultHTML = '<div class="table-container"><table><thead><tr><th>Giocatore</th><th>Saldo Punti</th></tr></thead><tbody>';
     const sorted = Object.entries(pointsGained).sort((a,b) => b[1] - a[1]);
-    if(sorted.length === 0) resultHTML += '<tr><td colspan="2">Nessun dato.</td></tr>';
     sorted.forEach(([pId, pts], index) => { const pName = playersData.find(x=>x.id===pId)?.name || "Ignoto"; const color = pts > 0 ? 'var(--success-color)' : 'var(--danger-color)'; const sign = pts > 0 ? '+' : ''; resultHTML += `<tr><td style="font-weight: ${index === 0 ? 'bold' : 'normal'}; ${index===0 ? 'color:#d4af37;':''}">${index === 0 ? '👑 ' : ''}${pName}</td><td style="color: ${color}; font-weight: bold;">${sign}${pts}</td></tr>`; });
     resDiv.innerHTML = resultHTML + '</tbody></table></div>';
 });
@@ -499,10 +448,14 @@ function generateSmartComment(playerId) {
     const commentBox = document.getElementById("ai-comment"); const extraBox = document.getElementById("extra-stats"); const extStatsBox = document.getElementById("extended-stats");
     const epicBadgeBox = document.getElementById("epic-title-container"); const epicTitleSpan = document.getElementById("player-epic-title");
     extraBox.innerHTML = ""; extStatsBox.style.display = "none"; document.getElementById("chart-container-pie").style.display = playerId === "general" ? "none" : "block";
+    document.getElementById("wr-text-display").innerText = "";
+    document.getElementById("chart-title-line").innerText = "📈 Andamento Punti";
+
     if(playersData.length === 0) { epicBadgeBox.style.display = "none"; return commentBox.innerText = "Attendo giocatori..."; }
     
     if(playerId === "general") {
         epicBadgeBox.style.display = "none";
+        document.getElementById("chart-title-line").innerText = "📊 Punti Attuali (Classifica)";
         const sorted = [...playersData].sort((a,b) => b.rating - a.rating); const leader = sorted[0]; let genNar = "";
         if(sorted.length > 1) {
             const gap = leader.rating - sorted[1].rating;
@@ -528,6 +481,8 @@ function generateSmartComment(playerId) {
     const tot = p.wins + p.losses; const wr = tot > 0 ? Math.round((p.wins / tot) * 100) : 0;
     const wonTours = toursData.filter(t => t.status === 'finished' && t.podium1 === p.id).length;
 
+    document.getElementById("wr-text-display").innerText = wr + "%";
+
     const playerMatchesChronological = matchesData.filter(m => m.winner === p.id || m.loser === p.id).sort((a,b) => a.timestamp - b.timestamp);
     let currentStreak = 0; let maxStreak = 0;
     playerMatchesChronological.forEach(m => { if(m.winner === p.id) { currentStreak++; if(currentStreak > maxStreak) maxStreak = currentStreak; } else currentStreak = 0; });
@@ -540,17 +495,52 @@ function generateSmartComment(playerId) {
         if(m.loser === p.id && diff > worstDiff) { worstDiff = diff; worstLoss = m; }
     });
 
-    let title = "Il Novizio"; let narrative = ""; const isFirst = p.id === [...playersData].sort((a,b)=>b.rating-a.rating)[0].id;
-    if(tot < 5) { title = "L'Incognita"; narrative = pickRnd([`È da poco sceso nell'arena. Il mistero che lo avvolge lo rende un avversario imprevedibile.`, `Un talento grezzo. Deve ancora accumulare partite.`]); }
-    else if (isFirst && wr > 65) { title = pickRnd(["Il Tiranno", "Il Monarca", "L'Intoccabile"]); narrative = `Siede sul trono con ferocia. Con un win rate del ${wr}%, non fa prigionieri. Sfiderà mai qualcuno in grado di farlo sudare?`; }
-    else if (isFirst && wr <= 65) { title = "Il Re Astuto"; narrative = `Primo in classifica, ma non invincibile. Mantiene il comando con l'astuzia.`; }
-    else if (!isFirst && wr >= 70) { title = pickRnd(["Il Predatore Oculto", "L'Esecutore", "Il Cecchino"]); narrative = `Guarda il suo Win Rate: ${wr}%. Quando gioca è una condanna a morte per chi sta dall'altra parte.`; }
-    else if (currentStreak >= 5) { title = pickRnd(["L'Inarrestabile", "La Fenice", "La Cometa"]); narrative = `Totalmente "On Fire". È entrato in una bolla mistica dove ogni schiacciata entra.`; }
-    else if (currentStreak <= -5) { title = pickRnd(["L'Anima Tormentata", "Il Sopravvissuto"]); narrative = `Un tunnel buio lungo ${Math.abs(currentStreak)} sconfitte. Servono energie positive, o un esorcismo alla racchetta.`; }
-    else if (wr > 40 && wr < 60 && tot > 20) { title = pickRnd(["Il Caotico", "La Mina Vagante", "Il Jolly"]); narrative = `Può battere il campione del mondo o perdere col peggiore in classifica nella stessa giornata. L'imprevedibilità è la sua firma.`; }
-    else if (wr <= 30 && tot > 15) { title = pickRnd(["L'Incudine", "Il Muro di Gomma", "Il Temerario"]); narrative = `Prende colpi, subisce, ma torna sempre al tavolo. Il suo Win Rate non racconta il coraggio d'acciaio che ci mette.`; }
-    else if (tot > 40 && wr >= 50) { title = pickRnd(["Il Veterano", "Lo Stratega", "Il Maestro"]); narrative = `Ha visto più top-spin lui di chiunque altro. Conosce i punti deboli del gruppo.`; }
-    else { title = "La Promessa"; narrative = `Alterna sprazzi di genio a blackout dolorosi. Ha un gran potenziale.`; }
+    let title = "Il Novizio"; let narrative = ""; let badgeBg = "linear-gradient(45deg, #d4af37, #b8860b)"; // default gold
+    const isFirst = p.id === [...playersData].sort((a,b)=>b.rating-a.rating)[0].id;
+    
+    if(tot < 5) { 
+        title = "L'Incognita"; narrative = pickRnd([`È da poco sceso nell'arena. Il mistero che lo avvolge lo rende imprevedibile.`, `Un talento grezzo da decifrare.`]); 
+        badgeBg = "linear-gradient(45deg, #a8a8a8, #696969)"; 
+    }
+    else if (wr < 20) { 
+        title = pickRnd(["Il Sacco da Boxe", "L'Eterno Sconfitto", "Il Disastro"]); narrative = `I numeri sono impietosi. Entra in campo solo per fare beneficenza di punti Elo.`; 
+        badgeBg = "linear-gradient(45deg, #2b2b2b, #000000)"; 
+    }
+    else if (wr <= 30) { 
+        title = pickRnd(["L'Incudine", "Il Muro di Gomma", "Il Masochista"]); narrative = `Prende colpi su colpi, ma torna sempre al tavolo. Eroe tragico di questo gruppo.`; 
+        badgeBg = "linear-gradient(45deg, #708090, #2f4f4f)"; 
+    }
+    else if (isFirst && wr > 65) { 
+        title = pickRnd(["Il Tiranno", "Il Monarca", "L'Intoccabile"]); narrative = `Siede sul trono con ferocia. Non fa prigionieri. Sfiderà mai qualcuno in grado di farlo sudare?`; 
+        badgeBg = "linear-gradient(45deg, #ffd700, #ff8c00)"; 
+    }
+    else if (isFirst && wr <= 65) { 
+        title = "Il Re Astuto"; narrative = `Primo in classifica, ma non invincibile. Mantiene il comando con l'astuzia.`; 
+    }
+    else if (!isFirst && wr >= 70) { 
+        title = pickRnd(["Il Predatore Occulto", "L'Esecutore", "Il Cecchino"]); narrative = `Guarda il suo Win Rate. Quando gioca è una condanna a morte.`; 
+        badgeBg = "linear-gradient(45deg, #8b0000, #4a0000)"; 
+    }
+    else if (currentStreak >= 5) { 
+        title = pickRnd(["L'Inarrestabile", "La Fenice", "La Cometa"]); narrative = `Totalmente "On Fire". È entrato in una bolla mistica dove ogni schiacciata entra.`; 
+        badgeBg = "linear-gradient(45deg, #ff4500, #dc143c)"; 
+    }
+    else if (currentStreak <= -5) { 
+        title = pickRnd(["L'Anima Tormentata", "Il Sopravvissuto"]); narrative = `Un tunnel buio lungo ${Math.abs(currentStreak)} sconfitte. Servono energie positive, o un esorcismo alla racchetta.`; 
+        badgeBg = "linear-gradient(45deg, #483d8b, #191970)"; 
+    }
+    else if (wr > 40 && wr < 60 && tot > 20) { 
+        title = pickRnd(["Il Caotico", "La Mina Vagante", "Il Jolly"]); narrative = `Può battere il campione o perdere coll'ultimo. L'imprevedibilità è la sua firma.`; 
+        badgeBg = "linear-gradient(45deg, #8a2be2, #4b0082)"; 
+    }
+    else if (tot > 40 && wr >= 50) { 
+        title = pickRnd(["Il Veterano", "Lo Stratega", "Il Maestro"]); narrative = `Ha visto più top-spin lui di chiunque altro. Conosce i punti deboli del gruppo.`; 
+        badgeBg = "linear-gradient(45deg, #008080, #006400)"; 
+    }
+    else { 
+        title = "La Promessa"; narrative = `Alterna sprazzi di genio a blackout dolorosi. Ha un gran potenziale inespresso.`; 
+        badgeBg = "linear-gradient(45deg, #4682b4, #00008b)"; 
+    }
 
     let ops = {}; playerMatchesChronological.forEach(m => { if(m.winner === playerId) { ops[m.loser] = ops[m.loser] || {w:0, l:0}; ops[m.loser].w++; } if(m.loser === playerId) { ops[m.winner] = ops[m.winner] || {w:0, l:0}; ops[m.winner].l++; } });
     let best = null, wBest = 0, worst = null, lWorst = 0;
@@ -560,12 +550,15 @@ function generateSmartComment(playerId) {
     if(worst && lWorst >= 3) narrative += pickRnd([` Il suo tallone d'Achille è ${nWorst}, una vera maledizione.`, ` Davanti a ${nWorst} va regolarmente in tilt.`]);
     else if(best && wBest >= 3) narrative += pickRnd([` Ha trovato nel povero ${nBest} il suo bancomat personale.`, ` Contro ${nBest} si sente onnipotente.`]);
 
-    epicBadgeBox.style.display = "block"; epicTitleSpan.innerText = title; commentBox.innerText = `🎙️ "${narrative}"`;
+    epicBadgeBox.style.display = "block"; 
+    epicTitleSpan.innerText = title; 
+    epicTitleSpan.style.background = badgeBg;
+    commentBox.innerText = `🎙️ "${narrative}"`;
     extraBox.innerHTML = `<div class="stat-box"><span>Tornei Vinti</span><strong>🏆 ${wonTours}</strong></div><div class="stat-box"><span>Win Streak</span><strong>${streakBadge}</strong></div><div class="stat-box"><span>Vittima Preferita</span><strong>${nBest}</strong></div><div class="stat-box"><span>Bestia Nera</span><strong>${nWorst}</strong></div>`;
     
     extStatsBox.innerHTML = "";
-    if(bestWin) { const lN = playersData.find(x=>x.id===bestWin.loser)?.name || "?"; const date = bestWin.timestamp.toDate().toLocaleDateString("it-IT", {month:'short', year:'numeric'}); extStatsBox.innerHTML += `<div class="extended-stat-box"><span class="badge-title">Vittoria Migliore</span><strong>Vinto ${bestWin.winnerScore}-${bestWin.loserScore}</strong> contro ${lN} <span class="match-context">(${date}${bestWin.tournamentId ? ' in un Torneo' : ''})</span></div>`; }
-    if(worstLoss) { const wN = playersData.find(x=>x.id===worstLoss.winner)?.name || "?"; const date = worstLoss.timestamp.toDate().toLocaleDateString("it-IT", {month:'short', year:'numeric'}); extStatsBox.innerHTML += `<div class="extended-stat-box"><span class="badge-title">Sconfitta Peggiore</span><strong>Perso ${worstLoss.loserScore}-${worstLoss.winnerScore}</strong> contro ${wN} <span class="match-context">(${date}${worstLoss.tournamentId ? ' in un Torneo' : ''})</span></div>`; }
+    if(bestWin) { const lN = playersData.find(x=>x.id===bestWin.loser)?.name || "?"; const date = bestWin.timestamp.toDate().toLocaleDateString("it-IT", {month:'short', year:'numeric'}); extStatsBox.innerHTML += `<div class="extended-stat-box"><span class="badge-title">Vittoria Migliore</span><strong>Vinto ${bestWin.winnerScore}-${bestWin.loserScore}</strong> contro ${lN} <span class="match-context">(${date}${bestWin.tournamentId ? ' in Torneo' : ''})</span></div>`; }
+    if(worstLoss) { const wN = playersData.find(x=>x.id===worstLoss.winner)?.name || "?"; const date = worstLoss.timestamp.toDate().toLocaleDateString("it-IT", {month:'short', year:'numeric'}); extStatsBox.innerHTML += `<div class="extended-stat-box"><span class="badge-title">Sconfitta Peggiore</span><strong>Perso ${worstLoss.loserScore}-${worstLoss.winnerScore}</strong> contro ${wN} <span class="match-context">(${date}${worstLoss.tournamentId ? ' in Torneo' : ''})</span></div>`; }
     extStatsBox.style.display = "flex";
 
     drawRealCharts("single", p);
@@ -574,7 +567,28 @@ function generateSmartComment(playerId) {
 function drawRealCharts(type, p) {
     if(lineChart) lineChart.destroy(); if(pieChart) pieChart.destroy();
     const ctx = document.getElementById('rankingChart').getContext('2d'); Chart.defaults.color = getComputedStyle(document.body).getPropertyValue('--text-color').trim(); Chart.defaults.font.family = 'Inter, sans-serif';
-    if(type === "general") { lineChart = new Chart(ctx, { type: 'line', data: { labels: ['Vuoto'], datasets: [{ label: 'Generale', data: [1000] }] }, options: { maintainAspectRatio: false } }); } else {
+    
+    if(type === "general") { 
+        // BAR CHART PER LA CLASSIFICA GENERALE!
+        const sortedData = [...playersData].sort((a,b) => b.rating - a.rating);
+        const labels = sortedData.map(pl => pl.name);
+        const dataPts = sortedData.map(pl => Math.round(pl.rating));
+        lineChart = new Chart(ctx, { 
+            type: 'bar', 
+            data: { 
+                labels: labels, 
+                datasets: [{ 
+                    label: 'Punteggio Elo Attuale', 
+                    data: dataPts, 
+                    backgroundColor: 'rgba(230, 57, 70, 0.7)',
+                    borderColor: '#e63946',
+                    borderWidth: 1,
+                    borderRadius: 5
+                }] 
+            }, 
+            options: { maintainAspectRatio: false, scales: { y: { beginAtZero: false, min: 900 } } } 
+        }); 
+    } else {
         const pm = matchesData.filter(m => m.winner === p.id || m.loser === p.id).reverse(); let lbs = ['Inizio'], dts = [1000];
         pm.forEach((m, i) => { lbs.push(`M${i+1}`); dts.push(m.winner === p.id && m.winnerNewRating ? m.winnerNewRating : (m.loser === p.id && m.loserNewRating ? m.loserNewRating : dts[dts.length-1])); });
         lineChart = new Chart(ctx, { type: 'line', data: { labels: lbs, datasets: [{ label: p.name, data: dts, borderColor: '#e63946', backgroundColor: 'rgba(230, 57, 70, 0.1)', fill: true, tension: 0.2 }] }, options: { maintainAspectRatio: false, responsive: true } });
