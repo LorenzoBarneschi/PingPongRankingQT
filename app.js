@@ -8,7 +8,7 @@ const playersRef = collection(db, "players"); const matchesRef = collection(db, 
 let playersData = []; let matchesData = []; let toursData = []; let lineChart = null; let pieChart = null;
 let activeTourId = null; let activeTourData = null; let currentMatchToPlay = null;
 
-const ADMIN_PIN = "2580";
+const ADMIN_PIN = "1234";
 
 function setNow() { 
     const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); 
@@ -118,7 +118,6 @@ function renderRanking() {
     if(document.getElementById('view-tournaments').classList.contains('active-view')) renderTournamentCheckboxes();
 }
 
-// SINCRONIZZAZIONE SNAPSHOTS
 onSnapshot(query(playersRef, orderBy("rating", "desc")), (snapshot) => {
     playersData = []; snapshot.forEach((doc) => { const p = doc.data(); p.id = doc.id; playersData.push(p); });
     renderRanking();
@@ -191,7 +190,6 @@ document.getElementById("edit-player-form").addEventListener("submit", async (e)
     if(id && newName) { await updateDoc(doc(db, "players", id), { name: newName }); document.getElementById("edit-player-form").reset(); alert("Nome/Emoji aggiornati!"); }
 });
 
-// SALVA PARTITA (Arena)
 document.getElementById("match-form").addEventListener("submit", async (e) => {
     e.preventDefault(); const wId = document.getElementById("winner").value; const lId = document.getElementById("loser").value;
     if (wId === lId) return alert("Giocatori diversi!"); document.getElementById("save-match-btn").disabled = true;
@@ -207,7 +205,6 @@ document.getElementById("match-form").addEventListener("submit", async (e) => {
     document.getElementById("match-form").reset(); setNow(); document.getElementById("save-match-btn").disabled = false;
 });
 
-// --- MOTORE TORNEI E TABELLONE ---
 function renderTournamentCheckboxes() {
     const container = document.getElementById("tournament-players-checkboxes"); if(!container) return; container.innerHTML = "";
     playersData.forEach(p => { container.innerHTML += `<label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text-color);"><input type="checkbox" value="${p.id}" class="tour-cb" style="width: 20px; height: 20px; margin: 0; flex-shrink: 0;"> <span style="flex:1;">${p.name} (${Math.round(p.rating)} pt)</span></label>`; });
@@ -535,13 +532,13 @@ function drawRealCharts(type, p) {
         const labels = sortedData.map(pl => pl.name);
         const dataPts = sortedData.map(pl => Math.round(pl.rating));
         
-        // CALCOLO DINAMICO ASSE Y PER MOSTRARE TUTTI I NOMI E COLONNE
         const minRating = Math.min(...dataPts);
         const yMin = Math.max(0, minRating - 30);
 
-        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-        gradient.addColorStop(0, 'rgba(230, 57, 70, 0.9)');
-        gradient.addColorStop(1, 'rgba(230, 57, 70, 0.3)');
+        // IL GRADIENTE ORA È ORIZZONTALE
+        const gradient = ctx.createLinearGradient(0, 0, ctx.canvas.width || 400, 0);
+        gradient.addColorStop(0, 'rgba(230, 57, 70, 0.4)');
+        gradient.addColorStop(1, 'rgba(230, 57, 70, 0.9)');
 
         lineChart = new Chart(ctx, { 
             type: 'bar', 
@@ -557,21 +554,20 @@ function drawRealCharts(type, p) {
                 }] 
             }, 
             options: { 
+                indexAxis: 'y', // QUESTA È LA MAGIA: GRAFICO ORIZZONTALE!
                 maintainAspectRatio: false, 
-                layout: { padding: { bottom: 40, top: 10 } }, // PADDING AGGIUNTO PER EVITARE IL TAGLIO DEI NOMI
+                layout: { padding: { right: 20 } }, 
                 scales: { 
-                    y: { 
+                    x: { 
                         beginAtZero: false, 
                         min: yMin, 
                         grid: { color: 'rgba(0,0,0,0.05)' },
                         ticks: { font: { family: 'Inter', size: 11 } } 
                     },
-                    x: { 
+                    y: { 
                         grid: { display: false },
                         ticks: { 
                             autoSkip: false, 
-                            maxRotation: 45, 
-                            minRotation: 45, 
                             font: { family: 'Inter', size: 12, weight: '600' } 
                         } 
                     }
