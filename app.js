@@ -91,22 +91,17 @@ function calculateMatchPoints(wData, lData, wScore, lScore, format, matchDateObj
     return Math.max(1, Math.round(32 * (1 - expW) * fmtMult * marginMult * spamPenalty));
 }
 
-// FUNZIONE GLOBALE DI RENDER CLASSIFICA (Risolve il bug della corona)
 function renderRanking() {
     if(playersData.length === 0) return;
     const rankingList = document.getElementById("ranking-list");
-    
-    // Evita di svuotare le select se l'utente sta facendo qualcosa, aggiorniamo solo le tendine se sono vuote o diverse
     const selects = [document.getElementById("winner"), document.getElementById("loser"), document.getElementById("delete-player-select"), document.getElementById("stats-player-select"), document.getElementById("h2h-p1"), document.getElementById("h2h-p2"), document.getElementById("edit-player-select")];
     
-    // Controlla il campione in carica
     const finishedTours = toursData.filter(t => t.status === 'finished').sort((a,b) => b.timestamp - a.timestamp);
     const reigningChampId = finishedTours.length > 0 ? finishedTours[0].podium1 : null;
 
     rankingList.innerHTML = "";
     let pos = 1;
     
-    // Popola tabella
     playersData.forEach((p) => {
         let rowClass = pos === 3 && playersData.length > 3 ? "podium-divider" : "";
         let rankClass = pos === 1 ? "rank-1" : (pos === 2 ? "rank-2" : (pos === 3 ? "rank-3" : (pos === playersData.length && playersData.length >= 4 ? "rank-last" : "")));
@@ -115,7 +110,6 @@ function renderRanking() {
         pos++;
     });
 
-    // Popola selects solo al primo caricamento o se i giocatori cambiano
     if(document.getElementById("winner").options.length <= 1) {
         selects.forEach(s => s.innerHTML = (s.id==='stats-player-select'?'<option value="general">📊 Statistiche Generali</option>':'<option value="">Seleziona...</option>'));
         playersData.forEach((p) => { selects.forEach(s => s.innerHTML += `<option value="${p.id}">${p.name}</option>`); });
@@ -132,7 +126,7 @@ onSnapshot(query(playersRef, orderBy("rating", "desc")), (snapshot) => {
 
 onSnapshot(query(toursRef, orderBy("timestamp", "desc")), (snapshot) => {
     toursData = []; snapshot.forEach(docSnap => { const t = docSnap.data(); t.id = docSnap.id; toursData.push(t); }); 
-    renderHistory(); checkActiveTournament(); renderRanking(); // Ridisegna la classifica per inserire la corona
+    renderHistory(); checkActiveTournament(); renderRanking();
     if(playersData.length > 0 && toursData.length > 0) { const e = new Event('change'); document.getElementById("stats-player-select").dispatchEvent(e); }
 });
 
@@ -411,7 +405,6 @@ document.getElementById("btn-finish-tournament").addEventListener("click", async
     confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }); 
 });
 
-// H2H E MESI
 function updateH2H() {
     const p1 = document.getElementById("h2h-p1").value; const p2 = document.getElementById("h2h-p2").value;
     const resDiv = document.getElementById("h2h-result"); const narDiv = document.getElementById("h2h-narrative"); narDiv.style.display = "none";
@@ -447,7 +440,6 @@ document.getElementById("month-select").addEventListener("change", (e) => {
     resDiv.innerHTML = resultHTML + '</tbody></table></div>';
 });
 
-// ORACOLO COMPLETO E GRAFICI MIGLIORATI
 document.getElementById("stats-player-select").addEventListener("change", (e) => generateSmartComment(e.target.value));
 
 function generateSmartComment(playerId) {
@@ -543,18 +535,19 @@ function drawRealCharts(type, p) {
         const labels = sortedData.map(pl => pl.name);
         const dataPts = sortedData.map(pl => Math.round(pl.rating));
         
-        // CALCOLO DINAMICO ASSE Y (Trova il minimo e abbassa di 30 punti per far vedere la barra)
+        // CALCOLO DINAMICO ASSE Y PER MOSTRARE TUTTI I NOMI E COLONNE
         const minRating = Math.min(...dataPts);
         const yMin = Math.max(0, minRating - 30);
 
         lineChart = new Chart(ctx, { 
             type: 'bar', 
-            data: { labels: labels, datasets: [{ label: 'Punteggio Elo Attuale', data: dataPts, backgroundColor: 'rgba(230, 57, 70, 0.7)', borderColor: '#e63946', borderWidth: 1, borderRadius: 5 }] }, 
+            data: { labels: labels, datasets: [{ label: 'Punteggio Elo', data: dataPts, backgroundColor: 'rgba(230, 57, 70, 0.7)', borderColor: '#e63946', borderWidth: 1, borderRadius: 5 }] }, 
             options: { 
                 maintainAspectRatio: false, 
+                layout: { padding: { bottom: 25, top: 10 } },
                 scales: { 
-                    y: { beginAtZero: false, min: yMin },
-                    x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 45, font: { size: 11 } } }
+                    y: { beginAtZero: false, min: yMin, ticks: { font: { family: 'Inter', size: 11 } } },
+                    x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 45, font: { family: 'Inter', size: 12, weight: '600' } } }
                 },
                 plugins: { legend: { display: false } }
             } 
