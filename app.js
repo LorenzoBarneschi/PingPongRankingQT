@@ -8,6 +8,7 @@ const playersRef = collection(db, "players"); const matchesRef = collection(db, 
 let playersData = []; let matchesData = []; let toursData = []; let lineChart = null; let pieChart = null;
 let activeTourId = null; let activeTourData = null; let currentMatchToPlay = null;
 
+// LORENZO, QUESTO È IL TUO PIN. NON SCORDARLO!
 const ADMIN_PIN = "2580";
 
 function setNow() { 
@@ -34,37 +35,75 @@ document.getElementById("nav-tournaments").addEventListener("click", () => { swi
 
 // GESTIONE ADMIN (LUCCHETTO)
 document.getElementById("btn-admin-login").addEventListener("click", () => {
-    const pin = prompt("Inserisci il PIN di sicurezza per sbloccare l'eliminazione dei dati:");
+    const pin = prompt("Inserisci il PIN di sicurezza (Solo Admin):");
     if(pin === ADMIN_PIN) {
         document.body.classList.add("admin-mode");
         document.getElementById("btn-admin-login").style.display = "none";
-        alert("🔓 Accesso Garantito! Ora puoi eliminare Partite, Tornei e Giocatori.");
+        alert("🔓 Accesso Garantito! Opzioni distruttive sbloccate.");
     } else if(pin !== null) { alert("❌ PIN errato."); }
 });
 
-// RESET
-document.getElementById("btn-hard-reset").addEventListener("click", async () => {
-    if(confirm("ATTENZIONE! Riportare TUTTI a 1000 punti e azzerare V/S?")) {
-        if(confirm("Sei sicuro? Le partite vecchie perderanno i riferimenti Elo corretti.")) {
-            const batch = writeBatch(db);
-            playersData.forEach(p => { batch.update(doc(db, "players", p.id), { rating: 1000, wins: 0, losses: 0 }); });
-            await batch.commit(); alert("Tutti i giocatori resettati a 1000 pt.");
-        }
-    }
-});
-
-function renderTournamentCheckboxes() {
-    const container = document.getElementById("tournament-players-checkboxes");
-    if(!container) return; container.innerHTML = "";
-    playersData.forEach(p => { 
-        container.innerHTML += `<label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text-color);"><input type="checkbox" value="${p.id}" class="tour-cb" style="width: 20px; height: 20px; margin: 0; flex-shrink: 0;"> <span style="flex:1;">${p.name} (${Math.round(p.rating)} pt)</span></label>`; 
-    });
+// SUPER-RESET DATABASE (CANCELLA TUTTO E RIMETTE A 1000)
+async function wipeEverything() {
+    const batch = writeBatch(db);
+    const mSnap = await getDocs(collection(db, "matches"));
+    const tSnap = await getDocs(collection(db, "tournaments"));
+    mSnap.forEach(d => batch.delete(d.ref));
+    tSnap.forEach(d => batch.delete(d.ref));
+    playersData.forEach(p => { batch.update(doc(db, "players", p.id), { rating: 1000, wins: 0, losses: 0 }); });
+    await batch.commit(); alert("Database riportato alle condizioni di fabbrica!");
 }
 
-// NUOVA MATEMATICA ELO (Vantaggi e Scarto)
+document.getElementById("btn-hard-reset").addEventListener("click", async () => {
+    if(confirm("ATTENZIONE! Vuoi davvero CANCELLARE TUTTO lo storico e resettare l'app a 0?")) {
+        if(confirm("Ultimo avviso! Questa operazione pialla tutto.")) { await wipeEverything(); }
+    }
+});
+document.getElementById("btn-clear-history").addEventListener("click", async () => {
+    if(confirm("Svuotare lo storico significa cancellare le partite e riportare i punti a 1000. Procedere?")) { await wipeEverything(); }
+});
+
+// RICALCOLO ELO COMPLETO (La Macchina del Tempo)
+document.getElementById("btn-recalculate-elo").addEventListener("click", async () => {
+    if(!confirm("Ricalcolare l'Elo di tutte le partite cronologicamente? Usa questo se hai cancellato partite vecchie e vuoi riaggiustare la catena matematica.")) return;
+    
+    // Attenzione: Ricalcolare con i Tornei di mezzo è rischiosissimo perché cambierebbe i Montepremi.
+    // L'app ti consiglia di non usarlo se ci sono tornei attivi o fitti.
+    if(toursData.length > 0) {
+        alert("Impossibile fare il ricalcolo automatico globale perché ci sono Tornei registrati. (I tornei hanno quote d'ingresso basate sui punti esatti in quel preciso momento, se cambiamo il passato si corrompe l'economia del torneo!).\n\nTi consiglio di usare l'eliminazione standard delle partite.");
+        return;
+    }
+
+    try {
+        const batch = writeBatch(db);
+        let simPlayers = {};
+        playersData.forEach(p => { simPlayers[p.id] = { rating: 1000, wins: 0, losses: 0 }; });
+
+        const allM = [...matchesData].sort((a,b) => a.timestamp - b.timestamp);
+        
+        allM.forEach(m => {
+            const w = simPlayers[m.winner]; const l = simPlayers[m.loser];
+            if(w && l) {
+                let points = calculateMatchPointsForSimulation(w, l, m.winnerScore, m.loserScore, m.format);
+                w.rating += points; w.wins++;
+                l.rating -= points; l.losses++;
+                batch.update(doc(db, "matches", m.id), { pointsExchanged: points, winnerNewRating: w.rating, loserNewRating: l.rating });
+            }
+        });
+
+        playersData.forEach(p => {
+            if(simPlayers[p.id]) {
+                batch.update(doc(db, "players", p.id), { rating: simPlayers[p.id].rating, wins: simPlayers[p.id].wins, losses: simPlayers[p.id].losses });
+            }
+        });
+        await batch.commit(); alert("Catena Elo ricalcolata e sistemata cronologicamente!");
+    } catch(e) { console.error(e); alert("Errore nel ricalcolo."); }
+});
+
+
+// LA NUOVA MATEMATICA ELO (Con Scarti e Vantaggi)
 function calculateMatchPoints(wData, lData, wScore, lScore, format, matchDateObj) {
-    let fmtMult = 1.0; 
-    let standardWinScore = 11;
+    let fmtMult = 1.0; let standardWinScore = 11;
     if(format === "21") { fmtMult = 1.2; standardWinScore = 21; }
     else if(format === "bo3_11") { fmtMult = 1.5; }
     else if(format === "custom") {
@@ -73,15 +112,12 @@ function calculateMatchPoints(wData, lData, wScore, lScore, format, matchDateObj
         standardWinScore = cPts;
     }
 
-    let diff = wScore - lScore;
-    let marginMult = 1.0;
+    let diff = wScore - lScore; let marginMult = 1.0;
     
-    // Vantaggi
-    if(diff <= 2 && wScore > standardWinScore) marginMult = 0.85; 
-    // Regolari
-    else if(diff <= 3) marginMult = 0.95; // Vittoria di Misura
+    if(diff <= 2 && wScore > standardWinScore) marginMult = 0.85; // Vantaggi estremi
+    else if(diff <= 3) marginMult = 0.95; // Misura
     else if(diff >= 4 && diff <= 6) marginMult = 1.0; // Normale
-    else if(diff >= 7 && diff <= 8) marginMult = 1.10; // Larga
+    else if(diff >= 7 && diff <= 8) marginMult = 1.10; // Netta
     else if(diff >= 9) marginMult = 1.15; // Cappotto
 
     let matchesThatDay = 0; const targetDateString = matchDateObj.toDateString();
@@ -95,6 +131,18 @@ function calculateMatchPoints(wData, lData, wScore, lScore, format, matchDateObj
     const expW = 1 / (1 + Math.pow(10, (lData.rating - wData.rating) / 400));
     let finalPoints = Math.max(1, Math.round(32 * (1 - expW) * fmtMult * marginMult * spamPenalty));
     return finalPoints;
+}
+
+// Stessa funzione ma semplificata per il simulatore (non conta lo spam giornaliero per non appesantire)
+function calculateMatchPointsForSimulation(wData, lData, wScore, lScore, format) {
+    let fmtMult = 1.0; let standardWinScore = 11;
+    if(format === "21") { fmtMult = 1.2; standardWinScore = 21; } else if(format === "bo3_11") { fmtMult = 1.5; }
+    let diff = wScore - lScore; let marginMult = 1.0;
+    if(diff <= 2 && wScore > standardWinScore) marginMult = 0.85; 
+    else if(diff <= 3) marginMult = 0.95; else if(diff >= 4 && diff <= 6) marginMult = 1.0; 
+    else if(diff >= 7 && diff <= 8) marginMult = 1.10; else if(diff >= 9) marginMult = 1.15; 
+    const expW = 1 / (1 + Math.pow(10, (lData.rating - wData.rating) / 400));
+    return Math.max(1, Math.round(32 * (1 - expW) * fmtMult * marginMult));
 }
 
 // CLASSIFICA E POPOLAMENTO
@@ -112,9 +160,7 @@ onSnapshot(query(playersRef, orderBy("rating", "desc")), (snapshot) => {
         const p = doc.data(); p.id = doc.id; playersData.push(p);
         let rowClass = pos === 3 && snapshot.size > 3 ? "podium-divider" : "";
         let rankClass = pos === 1 ? "rank-1" : (pos === 2 ? "rank-2" : (pos === 3 ? "rank-3" : (pos === snapshot.size && snapshot.size >= 4 ? "rank-last" : "")));
-        
         let crown = p.id === reigningChampId ? " 👑" : "";
-
         rankingList.innerHTML += `<tr class="${rowClass}"><td class="${rankClass}">${pos}°</td><td class="${rankClass}">${p.name}${crown}</td><td class="${rankClass}">${Math.round(p.rating)}</td><td>${p.wins} - ${p.losses}</td></tr>`;
         selects.forEach(s => s.innerHTML += `<option value="${p.id}">${p.name}</option>`); pos++;
     });
@@ -127,7 +173,6 @@ onSnapshot(query(matchesRef, orderBy("timestamp", "desc")), (snapshot) => {
 });
 onSnapshot(query(toursRef, orderBy("timestamp", "desc")), (snapshot) => {
     toursData = []; snapshot.forEach(docSnap => { const t = docSnap.data(); t.id = docSnap.id; toursData.push(t); }); renderHistory(); checkActiveTournament();
-    // Forza ricaricamento classifica per mostrare la corona se arriva un nuovo torneo
     if(playersData.length > 0 && toursData.length > 0) { const e = new Event('change'); document.getElementById("stats-player-select").dispatchEvent(e); }
 });
 
@@ -152,7 +197,7 @@ function renderHistory() {
 
 // CANCELLAZIONI INVERSE
 window.deleteMatch = async (matchId, wId, lId, pts) => {
-    if(!confirm("Annullare partita? I punti torneranno come prima.")) return;
+    if(!confirm("Annullare partita? I punti (seppur imprecisi sulla catena temporale) verranno sottratti ai giocatori in modo inverso.")) return;
     const w = await getDoc(doc(db, "players", wId)); const l = await getDoc(doc(db, "players", lId));
     if (w.exists()) await updateDoc(doc(db, "players", wId), { rating: w.data().rating - pts, wins: Math.max(0, w.data().wins - 1) });
     if (l.exists()) await updateDoc(doc(db, "players", lId), { rating: l.data().rating + pts, losses: Math.max(0, l.data().losses - 1) });
@@ -160,15 +205,20 @@ window.deleteMatch = async (matchId, wId, lId, pts) => {
 };
 
 window.deleteTournament = async (tourId) => {
-    if(!confirm("⚠️ ATTENZIONE: Rimborserai il Buy-in, toglierai i premi e INVERTIRAI L'ELO DI TUTTE LE PARTITE del torneo! Sei sicuro?")) return;
+    if(!confirm("⚠️ ATTENZIONE: Annullando il torneo rimborserai il Buy-in, toglierai i premi dal Podio e INVERTIRAI L'ELO DI TUTTE LE PARTITE giocate al suo interno! Sei sicuro?")) return;
     const t = toursData.find(x => x.id === tourId); if(!t) return;
+    
     try {
         const pSnap = await getDocs(query(playersRef)); let localP = {}; pSnap.forEach(d => { localP[d.id] = d.data(); });
+        
         if(t.podium1 && localP[t.podium1]) localP[t.podium1].rating -= t.prizes.p1;
         if(t.podium2 && localP[t.podium2]) localP[t.podium2].rating -= t.prizes.p2;
         if(t.podium3 && localP[t.podium3]) localP[t.podium3].rating -= t.prizes.p3;
+        
         t.players.forEach(pid => { if(localP[pid] && t.entryFeeMap[pid]) localP[pid].rating += t.entryFeeMap[pid]; });
+
         const batch = writeBatch(db); const mSnap = await getDocs(query(matchesRef));
+        
         mSnap.forEach(docSnap => {
             const m = docSnap.data();
             if(m.tournamentId === tourId) {
@@ -177,12 +227,13 @@ window.deleteTournament = async (tourId) => {
                 batch.delete(docSnap.ref); 
             }
         });
+
         t.players.forEach(pid => { if(localP[pid]) { batch.update(doc(db, "players", pid), { rating: localP[pid].rating, wins: localP[pid].wins, losses: localP[pid].losses }); } });
-        batch.delete(doc(db, "tournaments", tourId)); await batch.commit(); alert("Torneo annullato. Punti ed Elo ripristinati matematicamente!");
+        batch.delete(doc(db, "tournaments", tourId)); await batch.commit(); alert("Torneo annullato in sicurezza.");
     } catch(e) { console.error(e); alert("Errore durante l'annullamento."); }
 };
 
-// GESTIONE GIOCATORI (Aggiungi, Elimina, Modifica)
+// GIOCTORI
 document.getElementById("player-form").addEventListener("submit", async (e) => { e.preventDefault(); const n = document.getElementById("new-player-name").value.trim(); if (n) { await setDoc(doc(playersRef, n.toLowerCase().replace(/\s+/g, '_')), { name: n, rating: 1000, wins: 0, losses: 0 }); document.getElementById("new-player-name").value = ""; }});
 document.getElementById("delete-player-btn").addEventListener("click", async () => { const id = document.getElementById("delete-player-select").value; if(id && confirm("Sicuro?")) await deleteDoc(doc(playersRef, id)); });
 document.getElementById("edit-player-form").addEventListener("submit", async (e) => {
@@ -208,6 +259,11 @@ document.getElementById("match-form").addEventListener("submit", async (e) => {
 });
 
 // --- MOTORE TORNEI E TABELLONE ---
+function renderTournamentCheckboxes() {
+    const container = document.getElementById("tournament-players-checkboxes"); if(!container) return; container.innerHTML = "";
+    playersData.forEach(p => { container.innerHTML += `<label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text-color);"><input type="checkbox" value="${p.id}" class="tour-cb" style="width: 20px; height: 20px; margin: 0; flex-shrink: 0;"> <span style="flex:1;">${p.name} (${Math.round(p.rating)} pt)</span></label>`; });
+}
+
 function checkActiveTournament() {
     activeTourData = toursData.find(t => t.status === 'active');
     if(activeTourData) {
@@ -350,8 +406,6 @@ document.getElementById("modal-form").addEventListener("submit", async (e) => {
     cm.s1 = s1; cm.s2 = s2; cm.w = wId; cm.l = lId;
 
     const wData = playersData.find(p=>p.id===wId); const lData = playersData.find(p=>p.id===lId);
-    
-    // Calcolo Elo standard per la partita di torneo (usando il nuovo sistema distacchi)
     let points = calculateMatchPoints(wData, lData, Math.max(s1,s2), Math.min(s1,s2), "11", new Date(activeTourData.timestamp.toDate())); 
     
     await updateDoc(doc(db, "players", wId), { rating: wData.rating + points, wins: wData.wins + 1 });
@@ -402,11 +456,9 @@ document.getElementById("btn-finish-tournament").addEventListener("click", async
     const d3 = (await getDoc(doc(db, "players", p3))).data(); await updateDoc(doc(db, "players", p3), { rating: d3.rating + prize3 });
 
     await updateDoc(doc(db, "tournaments", activeTourData.id), { status: 'finished', podium1: p1, podium2: p2, podium3: p3, prizes: {p1: prize1, p2: prize2, p3: prize3} });
-    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }); // CORIANDOLI! 🎉
-    alert(`🏆 TORNEO CONCLUSO!\n🥇 +${prize1}pt\n🥈 +${prize2}pt\n🥉 +${prize3}pt`);
+    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }); 
 });
 
-// H2H E MESI
 function updateH2H() {
     const p1 = document.getElementById("h2h-p1").value; const p2 = document.getElementById("h2h-p2").value;
     const resDiv = document.getElementById("h2h-result"); const narDiv = document.getElementById("h2h-narrative"); narDiv.style.display = "none";
@@ -441,7 +493,6 @@ document.getElementById("month-select").addEventListener("change", (e) => {
     resDiv.innerHTML = resultHTML + '</tbody></table></div>';
 });
 
-// ORACOLO E STATISTICHE ESTESE (MIGLIOR VITTORIA, TORNEI VINTI ECC)
 document.getElementById("stats-player-select").addEventListener("change", (e) => generateSmartComment(e.target.value));
 
 function generateSmartComment(playerId) {
@@ -450,7 +501,6 @@ function generateSmartComment(playerId) {
     extraBox.innerHTML = ""; extStatsBox.style.display = "none"; document.getElementById("chart-container-pie").style.display = playerId === "general" ? "none" : "block";
     if(playersData.length === 0) { epicBadgeBox.style.display = "none"; return commentBox.innerText = "Attendo giocatori..."; }
     
-    // RECORD GENERALI (ALL TIME GRUPPO)
     if(playerId === "general") {
         epicBadgeBox.style.display = "none";
         const sorted = [...playersData].sort((a,b) => b.rating - a.rating); const leader = sorted[0]; let genNar = "";
@@ -462,11 +512,9 @@ function generateSmartComment(playerId) {
         } else { genNar = "C'è solo un giocatore nell'Arena. Chi oserà sfidarlo?"; }
         commentBox.innerText = `🎙️ "${genNar}"`; 
 
-        // Trova Max Streak Globale
         let maxStreakGlobal = 0; let streakOwner = "";
         playersData.forEach(pl => {
-            let cs=0, ms=0;
-            const pm = matchesData.filter(m => m.winner === pl.id || m.loser === pl.id).sort((a,b) => a.timestamp - b.timestamp);
+            let cs=0, ms=0; const pm = matchesData.filter(m => m.winner === pl.id || m.loser === pl.id).sort((a,b) => a.timestamp - b.timestamp);
             pm.forEach(m => { if(m.winner === pl.id) { cs++; if(cs>ms) ms=cs; } else cs=0; });
             if(ms > maxStreakGlobal) { maxStreakGlobal = ms; streakOwner = pl.name; }
         });
@@ -476,22 +524,15 @@ function generateSmartComment(playerId) {
         drawRealCharts("general", null); return;
     }
     
-    // STATS SINGOLO GIOCATORE
     const p = playersData.find(x => x.id === playerId);
     const tot = p.wins + p.losses; const wr = tot > 0 ? Math.round((p.wins / tot) * 100) : 0;
-    
-    // Calcolo Tornei Vinti
     const wonTours = toursData.filter(t => t.status === 'finished' && t.podium1 === p.id).length;
 
-    // Calcolo Streak attuali e Record personale
     const playerMatchesChronological = matchesData.filter(m => m.winner === p.id || m.loser === p.id).sort((a,b) => a.timestamp - b.timestamp);
     let currentStreak = 0; let maxStreak = 0;
-    playerMatchesChronological.forEach(m => {
-        if(m.winner === p.id) { currentStreak++; if(currentStreak > maxStreak) maxStreak = currentStreak; } else currentStreak = 0;
-    });
+    playerMatchesChronological.forEach(m => { if(m.winner === p.id) { currentStreak++; if(currentStreak > maxStreak) maxStreak = currentStreak; } else currentStreak = 0; });
     let streakBadge = currentStreak >= 3 ? ` 🔥 (${currentStreak})` : ` (${currentStreak})`;
 
-    // Trova Miglior Vittoria e Peggior Sconfitta (per Scarto)
     let bestWin = null; let bestDiff = -1; let worstLoss = null; let worstDiff = -1;
     playerMatchesChronological.forEach(m => {
         let diff = Math.abs(m.winnerScore - m.loserScore);
@@ -522,16 +563,9 @@ function generateSmartComment(playerId) {
     epicBadgeBox.style.display = "block"; epicTitleSpan.innerText = title; commentBox.innerText = `🎙️ "${narrative}"`;
     extraBox.innerHTML = `<div class="stat-box"><span>Tornei Vinti</span><strong>🏆 ${wonTours}</strong></div><div class="stat-box"><span>Win Streak</span><strong>${streakBadge}</strong></div><div class="stat-box"><span>Vittima Preferita</span><strong>${nBest}</strong></div><div class="stat-box"><span>Bestia Nera</span><strong>${nWorst}</strong></div>`;
     
-    // Mostra Best Win / Worst Loss
     extStatsBox.innerHTML = "";
-    if(bestWin) {
-        const lN = playersData.find(x=>x.id===bestWin.loser)?.name || "?"; const date = bestWin.timestamp.toDate().toLocaleDateString("it-IT", {month:'short', year:'numeric'});
-        extStatsBox.innerHTML += `<div class="extended-stat-box"><span class="badge-title">Vittoria Migliore</span><strong>Vinto ${bestWin.winnerScore}-${bestWin.loserScore}</strong> contro ${lN} <span class="match-context">(${date}${bestWin.tournamentId ? ' in un Torneo' : ''})</span></div>`;
-    }
-    if(worstLoss) {
-        const wN = playersData.find(x=>x.id===worstLoss.winner)?.name || "?"; const date = worstLoss.timestamp.toDate().toLocaleDateString("it-IT", {month:'short', year:'numeric'});
-        extStatsBox.innerHTML += `<div class="extended-stat-box"><span class="badge-title">Sconfitta Peggiore</span><strong>Perso ${worstLoss.loserScore}-${worstLoss.winnerScore}</strong> contro ${wN} <span class="match-context">(${date}${worstLoss.tournamentId ? ' in un Torneo' : ''})</span></div>`;
-    }
+    if(bestWin) { const lN = playersData.find(x=>x.id===bestWin.loser)?.name || "?"; const date = bestWin.timestamp.toDate().toLocaleDateString("it-IT", {month:'short', year:'numeric'}); extStatsBox.innerHTML += `<div class="extended-stat-box"><span class="badge-title">Vittoria Migliore</span><strong>Vinto ${bestWin.winnerScore}-${bestWin.loserScore}</strong> contro ${lN} <span class="match-context">(${date}${bestWin.tournamentId ? ' in un Torneo' : ''})</span></div>`; }
+    if(worstLoss) { const wN = playersData.find(x=>x.id===worstLoss.winner)?.name || "?"; const date = worstLoss.timestamp.toDate().toLocaleDateString("it-IT", {month:'short', year:'numeric'}); extStatsBox.innerHTML += `<div class="extended-stat-box"><span class="badge-title">Sconfitta Peggiore</span><strong>Perso ${worstLoss.loserScore}-${worstLoss.winnerScore}</strong> contro ${wN} <span class="match-context">(${date}${worstLoss.tournamentId ? ' in un Torneo' : ''})</span></div>`; }
     extStatsBox.style.display = "flex";
 
     drawRealCharts("single", p);

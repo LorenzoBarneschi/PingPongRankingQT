@@ -10,7 +10,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Righteous&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Libreria Leggerissima per i Coriandoli -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 <body>
@@ -88,7 +87,6 @@
                     <button type="submit" class="btn-secondary" style="background-color: #2a9d8f;">Salva Modifica</button>
                 </form>
 
-                <!-- QUESTE SEZIONI SONO INVISIBILI FINCHÉ NON INSERISCI IL PIN -->
                 <div class="delete-section admin-only" style="margin-top: 25px; border-top: 1px solid #eee; padding-top: 15px;">
                     <label>Elimina Giocatore (Irreversibile)</label>
                     <div style="display: flex; gap: 10px; width: 100%;">
@@ -96,8 +94,11 @@
                         <button id="delete-player-btn" class="btn-danger" style="flex: 1; margin: 0;">Elimina</button>
                     </div>
                 </div>
-                <div class="reset-section admin-only" style="margin-top: 20px; text-align: center; border-top: 1px dashed #ccc; padding-top: 15px;">
-                    <button id="btn-hard-reset" style="background-color: transparent; color: var(--danger-color); border: 1px solid var(--danger-color); font-size: 0.8rem; padding: 10px;">⚠️ RESETTA TUTTI I PUNTI A 1000</button>
+
+                <!-- TASTI ADMIN PER MANUTENZIONE -->
+                <div class="reset-section admin-only" style="margin-top: 20px; text-align: center; border-top: 1px dashed #ccc; padding-top: 15px; display:flex; flex-direction:column; gap:10px;">
+                    <button id="btn-recalculate-elo" style="background-color: var(--secondary-color); color: white; border: none; font-size: 0.85rem; padding: 12px;">🔄 RICALCOLA ELO DA ZERO</button>
+                    <button id="btn-hard-reset" style="background-color: transparent; color: var(--danger-color); border: 1px solid var(--danger-color); font-size: 0.8rem; padding: 10px; box-shadow:none;">⚠️ AZZERA TUTTO (PUNTI E STORICO)</button>
                 </div>
             </section>
         </div>
@@ -105,7 +106,12 @@
         <!-- VISTA 2: STORICO -->
         <div id="view-history" class="view">
             <div class="view-header"><h2>📜 Lo Storico</h2><p class="subtitle">Partite e Tornei registrati</p></div>
-            <section class="card"><div id="history-list"><p>Caricamento storico...</p></div></section>
+            <section class="card">
+                <div class="admin-only" style="text-align: right; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee;">
+                    <button id="btn-clear-history" style="background: transparent; color: var(--danger-color); font-size: 0.8rem; padding: 5px; box-shadow: none;">🗑️ Svuota Tutto lo Storico</button>
+                </div>
+                <div id="history-list"><p>Caricamento storico...</p></div>
+            </section>
         </div>
 
         <!-- VISTA 3: STATISTICHE E AI -->
@@ -133,7 +139,6 @@
                 </div>
                 <p id="ai-comment">Sto analizzando i dati...</p>
                 <div id="extra-stats" class="extra-stats-container"></div>
-                <!-- Box estesi per Miglior Vittoria / Sconfitta -->
                 <div id="extended-stats" style="margin-top: 15px; display: none; flex-direction: column; gap: 10px;"></div>
             </section>
             <section class="card chart-wrapper" id="chart-container-line"><h2>📈 Andamento Punti</h2><div class="canvas-container"><canvas id="rankingChart"></canvas></div></section>
